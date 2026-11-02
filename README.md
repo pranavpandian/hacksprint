@@ -1,48 +1,189 @@
 # BridgeUX
 
-BridgeUX is a local-first Electron accessibility helper. It can listen to Hindi and English, answer spoken requests, read a screen the user shares, and speak its replies. Speech, screen, and gesture processing runs on the device; AI requests use local models only.
+BridgeUX is a Windows desktop accessibility prototype that combines voice interaction, screen reading, and a small set of hand-gesture labels. Its AI and speech inference run locally: screen images and prompts go to Ollama on `127.0.0.1`; audio and camera frames are processed on the device.
 
-## Features
+> **Current scope:** BridgeUX is a prototype, not a replacement for a screen reader or an autonomous browser agent. Screen help reads a user-selected display when the user starts capture or live help. It can suggest one limited action, which the user must approve. The hand model recognizes seven common static gestures; it does not understand or translate ASL, ISL, or another sign language.
 
-- Nemotron streaming speech recognition with automatic Hindi/English detection.
-- Piper neural English and Hindi voices for replies and read-aloud.
-- Qwen2.5 1.5B for the local assistant and Qwen3-VL 2B for screen understanding through Ollama.
-- Screen actions are proposed for approval; Enter is blocked unless the user clearly asks to press it.
-- On-device MediaPipe recognition for seven common static hand gestures. This is a limited gesture demo, not full sign-language translation.
-- Optional Chrome helper, captions demo, text scaling, contrast, spacing, and theme controls.
+## What it includes
 
-## Run and build
+- Streaming Hindi/English speech-to-text using the local NVIDIA Nemotron 3.5 model through sherpa-onnx. The language is auto-detected by the model.
+- Local English and Hindi Piper neural voices for replies and read-aloud.
+- A local Qwen assistant for spoken/text help and Qwen vision model for selected screen captures, both served by Ollama.
+- User-started screen capture and live screen help. The live helper samples the selected display periodically and speaks summaries when requested.
+- A user-started camera view with MediaPipe's seven canned, static hand gestures.
+- Adjustable text size, contrast/theme, spacing, captions demo, and an optional Chrome helper.
 
-Install Node.js and npm, install the model files described in [models/README.md](models/README.md), then run:
+See [Privacy](PRIVACY.md), [Security](SECURITY.md), [architecture](docs/ARCHITECTURE.md), and [model details](models/README.md) for limits and implementation notes.
+
+## Requirements
+
+### For the Windows app
+
+- Windows 10 or 11, 64-bit x64.
+- A microphone for voice input and speakers/headphones for spoken replies. Camera use is optional.
+- Ollama for the local assistant and visual screen understanding. It is installed separately from BridgeUX.
+- Internet access for the first-time setup: application dependencies and model weights are downloaded once. After setup, inference uses the local models.
+- Storage for the application and model weights. The two Ollama models alone download roughly 3 GB; reserve at least 8 GB of free disk space for models, npm dependencies, and build/cache files.
+- 8 GB RAM is a practical minimum; 16 GB is recommended when running both AI models. A compatible GPU can speed up Ollama inference but is optional; the app's speech recognition and neural voices use CPU inference.
+
+These are practical recommendations, not a hardware compatibility guarantee. Performance depends on the CPU/GPU, available memory, screen size, and concurrent applications.
+
+### To run from source or build the installer
+
+- Git (to clone the repository).
+- Node.js 22 LTS or newer with npm.
+- Ollama for Windows.
+- The local assets listed in [Local model setup](#local-model-setup). They are large and are intentionally excluded from Git.
+- Visual Studio Build Tools with the **Desktop development with C++** workload only if npm reports that a native dependency needs compiling and no compatible prebuilt binary is available.
+
+## Install and run on Windows
+
+### Option A: use a packaged installer
+
+1. Download the latest `BridgeUX Setup <version>.exe` from the project's GitHub Releases, if a release is available.
+2. Run the installer and follow its prompts. The installer includes the Nemotron speech model, Piper voices, and MediaPipe gesture model when they were present during packaging.
+3. Install [Ollama for Windows](https://ollama.com/download/windows) if it is not already installed.
+4. In the BridgeUX folder, run `Install-Local-Vision-Model.bat`, or open PowerShell and run:
+
+   ```powershell
+   ollama pull qwen2.5:1.5b-instruct
+   ollama pull qwen3-vl:2b
+   ```
+
+5. Start BridgeUX. Allow microphone permission only if you want to use speech. Select a display and start screen help when you want screen content analyzed. Camera permission is only needed for the gesture demo.
+
+If the repository has no published GitHub Release yet, use Option B to build the app, or ask the project maintainer for the installer.
+
+### Option B: run the source checkout
+
+In PowerShell:
 
 ```powershell
-npm install
-npm start
+git clone https://github.com/pranavpandian/hacksprint.git
+cd hacksprint
+npm ci
 ```
 
-Build the Windows x64 installer with:
-
-```powershell
-npm run dist:win
-```
-
-The installer bundles the speech, voice, and gesture assets when those files are present in `models/`. It expects Ollama to be installed separately and the two Ollama models to be available in the current Windows account. BridgeUX starts the local Ollama service when needed.
-
-## Local AI models
-
-Install Ollama, then run:
+Download and place the model files using [Local model setup](#local-model-setup), then download the local Ollama models:
 
 ```powershell
 ollama pull qwen2.5:1.5b-instruct
 ollama pull qwen3-vl:2b
 ```
 
-No cloud AI or speech APIs are used. The models and screen images are processed locally.
+Launch BridgeUX:
 
-## Chrome helper
+```powershell
+npm start
+```
 
-In Chrome, open `chrome://extensions`, enable Developer mode, select **Load unpacked**, and choose `browser-extension`. The extension reads a page only after you invoke its helper button.
+Ollama normally runs as a local background service. BridgeUX tries to start it if it is installed but not already running. AI status in the app should show both Qwen models as ready.
 
-## Privacy and limits
+## Local model setup
 
-The microphone prompt appears before voice input is enabled. Microphone audio is processed locally and is not saved. Screen capture is off until the user chooses a display. Camera access is off until the user starts gesture detection. The gesture model recognizes a small fixed list of static hand poses; it does not translate a sign language.
+Model binaries are not committed to this repository. Download them from their upstream project/model pages, review the model cards and licenses, and put them at the exact paths below. These PowerShell commands download the current packages used by this source tree. Run them from the repository root; they require internet access and several gigabytes of free space.
+
+### 1. Streaming Hindi/English speech recognition
+
+Download the [sherpa-onnx Nemotron multilingual streaming model package](https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11.tar.bz2), extract it, and rename its extracted folder to the name expected by BridgeUX:
+
+```powershell
+New-Item -ItemType Directory -Force models | Out-Null
+$asrArchive = Join-Path $env:TEMP 'bridgeux-nemotron.tar.bz2'
+Invoke-WebRequest 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11.tar.bz2' -OutFile $asrArchive
+tar -xjf $asrArchive -C models
+Move-Item 'models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11' 'models/asr-nemotron-3.5-560ms-int8'
+```
+
+The folder must contain `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, and `tokens.txt` directly inside it. This build runs speech recognition on CPU.
+
+### 2. English and Hindi neural voices
+
+The following packages are published by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models):
+
+```powershell
+$enArchive = Join-Path $env:TEMP 'bridgeux-en-voice.tar.bz2'
+$hiArchive = Join-Path $env:TEMP 'bridgeux-hi-voice.tar.bz2'
+New-Item -ItemType Directory -Force 'models/tts' | Out-Null
+Invoke-WebRequest 'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2' -OutFile $enArchive
+Invoke-WebRequest 'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-hi_IN-pratham-medium.tar.bz2' -OutFile $hiArchive
+tar -xjf $enArchive -C models/tts
+tar -xjf $hiArchive -C models/tts
+```
+
+BridgeUX expects these files in each voice folder: the `.onnx` model, `tokens.txt`, and `espeak-ng-data`. The commands above extract directly under `models/tts/`, so the final paths are:
+
+```text
+models/tts/vits-piper-en_US-lessac-medium/en_US-lessac-medium.onnx
+models/tts/vits-piper-en_US-lessac-medium/tokens.txt
+models/tts/vits-piper-en_US-lessac-medium/espeak-ng-data/
+models/tts/vits-piper-hi_IN-pratham-medium/hi_IN-pratham-medium.onnx
+models/tts/vits-piper-hi_IN-pratham-medium/tokens.txt
+models/tts/vits-piper-hi_IN-pratham-medium/espeak-ng-data/
+```
+
+### 3. Hand gesture model
+
+Download Google's [MediaPipe Gesture Recognizer task model](https://developers.google.com/edge/mediapipe/solutions/vision/gesture_recognizer) into the expected path:
+
+```powershell
+Invoke-WebRequest 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task' -OutFile 'models/gesture_recognizer.task'
+```
+
+MediaPipe's built-in labels are `Closed_Fist`, `Open_Palm`, `Pointing_Up`, `Thumb_Down`, `Thumb_Up`, `Victory`, and `ILoveYou`. These are isolated gesture labels, not a sign-language vocabulary or translation system.
+
+### 4. Local assistant and screen vision models
+
+Install [Ollama](https://ollama.com/download/windows), then download the exact model names BridgeUX uses:
+
+```powershell
+ollama pull qwen2.5:1.5b-instruct
+ollama pull qwen3-vl:2b
+ollama list
+```
+
+The assistant uses `qwen2.5:1.5b-instruct`; screen images use `qwen3-vl:2b`. Ollama keeps these model weights in its own model store, not in this repository. The current Ollama library lists the Qwen 3 VL 2B download at about 1.9 GB and Qwen 2.5 1.5B Instruct at about 986 MB. See [Qwen3-VL tags](https://ollama.com/library/qwen3-vl/tags) and [Qwen2.5 tags](https://ollama.com/library/qwen2.5/tags).
+
+## Build a Windows installer
+
+First complete all steps under [Local model setup](#local-model-setup). The builder copies any model assets it finds in `models/` into the installer; missing files are not downloaded automatically.
+
+```powershell
+npm ci
+npm run dist:win
+```
+
+The x64 NSIS installer is written to `release/`. The installer includes the local speech, voice, and gesture model files when they are present. It does **not** include Ollama or the Ollama Qwen weights; install Ollama and pull those two models separately on each target machine. Model binaries and the generated installer are excluded from Git.
+
+## Optional Chrome helper
+
+1. Open `chrome://extensions` in Chrome.
+2. Turn on **Developer mode**.
+3. Select **Load unpacked** and choose this repository's `browser-extension` folder.
+4. Use its button on a page when you want the extension to read that page.
+
+The helper is optional and is not included in the Windows Electron installer. It reads page content only when the user invokes it.
+
+## Troubleshooting
+
+| Problem | What to check |
+| --- | --- |
+| Ollama/model status is unavailable | Open PowerShell and run `ollama list`. Pull both exact tags above. Confirm Ollama responds locally before restarting BridgeUX. |
+| Screen vision returns HTTP 404 or says the model is missing | Run `ollama pull qwen3-vl:2b`, then verify that `ollama list` contains `qwen3-vl:2b`. |
+| Local assistant falls back or says model unavailable | Run `ollama pull qwen2.5:1.5b-instruct` and verify the exact tag with `ollama list`. |
+| Speech recognition says the model is missing | Check that the four ASR files are directly inside `models/asr-nemotron-3.5-560ms-int8/`, then restart the app. |
+| Neural voice fails | Check the requested language's `.onnx`, `tokens.txt`, and `espeak-ng-data` files in its folder under `models/tts/`. |
+| Gesture model cannot load | Check `models/gesture_recognizer.task`, allow camera access, and start the gesture view. |
+| npm install fails on a native dependency | Use 64-bit Node.js 22 LTS or newer. If npm specifically requests a C++ toolchain, install Visual Studio Build Tools with **Desktop development with C++**, then retry `npm ci`. |
+
+## Privacy and safety
+
+- There are no cloud AI, cloud speech, or analytics APIs in the app. AI prompts and chosen screenshots are sent to the local Ollama service at `127.0.0.1` only.
+- The microphone is requested only for voice features. Audio is streamed to the local ASR model and is not saved by BridgeUX.
+- Camera access is optional and starts only when the user starts gesture recognition. Frames are processed locally and are not recorded by BridgeUX.
+- Screen capture/live help is user-started. Captured frames are processed locally in memory; review [Privacy](PRIVACY.md) before using it with sensitive content.
+- Model quality is imperfect. Verify important information with its original source. BridgeUX does not invent personal facts or submit forms without an explicit user-approved action.
+
+## Model and dependency licenses
+
+The app's source, bundled model weights, npm dependencies, and Ollama models may have different licenses and terms. Review the license and model card at each upstream source before redistribution or commercial use. BridgeUX does not redistribute excluded model weights through this Git repository.

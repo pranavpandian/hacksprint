@@ -1,19 +1,28 @@
-# Local model assets
+# Model assets
 
-Large model weight files are intentionally not stored in this Git repository. The Windows installer packages these assets when they are present locally.
+Model weights are intentionally excluded from Git because of their size and their separate licenses. Follow the [main README installation instructions](../README.md#local-model-setup) for downloads, exact folder layout, and source links.
 
-Required folders under this directory:
+BridgeUX expects these local assets for its corresponding features:
 
-- `asr-nemotron-3.5-560ms-int8/` — Nemotron streaming ASR ONNX files (`encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, `tokens.txt`).
-- `tts/vits-piper-en_US-lessac-medium/` — English Piper ONNX voice, tokens, and `espeak-ng-data`.
-- `tts/vits-piper-hi_IN-pratham-medium/` — Hindi Piper ONNX voice, tokens, and `espeak-ng-data`.
-- `gesture_recognizer.task` — MediaPipe hand gesture task model.
-
-The Ollama weights are installed separately in the Windows user model store:
-
-```powershell
-ollama pull qwen2.5:1.5b-instruct
-ollama pull qwen3-vl:2b
+```text
+models/
+├── asr-nemotron-3.5-560ms-int8/
+│   ├── encoder.int8.onnx
+│   ├── decoder.int8.onnx
+│   ├── joiner.int8.onnx
+│   └── tokens.txt
+├── tts/
+│   ├── vits-piper-en_US-lessac-medium/
+│   │   ├── en_US-lessac-medium.onnx
+│   │   ├── tokens.txt
+│   │   └── espeak-ng-data/
+│   └── vits-piper-hi_IN-pratham-medium/
+│       ├── hi_IN-pratham-medium.onnx
+│       ├── tokens.txt
+│       └── espeak-ng-data/
+└── gesture_recognizer.task
 ```
 
-If you have the packaged BridgeUX installer, it already includes the Nemotron, Piper, and MediaPipe assets. The source installer build requires restoring the listed files before running `npm run dist:win`.
+The Windows installer build copies these assets only when they exist in the source tree. The packaged app still expects Ollama to be installed separately, with `qwen2.5:1.5b-instruct` and `qwen3-vl:2b` pulled into the target Windows account's Ollama model store.
+
+The MediaPipe model recognizes seven canned static gestures. It is not a sign-language recognition or translation model.
