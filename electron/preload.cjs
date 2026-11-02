@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('bridgeux', Object.freeze({
   performApprovedAction: action => ipcRenderer.invoke('bridgeux:perform-action', action),
   startSpeech: () => ipcRenderer.invoke('bridgeux:speech-start'),
   stopSpeech: () => ipcRenderer.invoke('bridgeux:speech-stop'),
+  pauseSpeech: () => ipcRenderer.invoke('bridgeux:speech-pause'),
   sendSpeechAudio: samples => ipcRenderer.send('bridgeux:speech-audio', samples),
   onSpeechResult: callback => ipcRenderer.on('bridgeux:speech-result', (_event, result) => callback(result)),
   speakText: request => ipcRenderer.invoke('bridgeux:speak-text', request),

@@ -75,6 +75,11 @@ function stopSpeech() {
   return { stopped: true };
 }
 
+function pauseSpeech() {
+  speechWorker?.postMessage({ type: 'pause' });
+  return { paused: true };
+}
+
 function processSpeechAudio(samples) {
   if (!(samples instanceof Float32Array) || samples.length < 320 || samples.length > 32000) return;
   speechWorker?.postMessage({ type: 'audio', samples }, [samples.buffer]);
@@ -289,6 +294,7 @@ ipcMain.handle('bridgeux:choose-screen', (_event, id) => chooseCaptureSource(id)
 ipcMain.handle('bridgeux:capture-screen', (_event, id) => captureScreen(id));
 ipcMain.handle('bridgeux:speech-start', () => startSpeech());
 ipcMain.handle('bridgeux:speech-stop', () => stopSpeech());
+ipcMain.handle('bridgeux:speech-pause', () => pauseSpeech());
 ipcMain.on('bridgeux:speech-audio', (_event, samples) => processSpeechAudio(samples));
 ipcMain.handle('bridgeux:speak-text', (_event, payload) => speakText(payload));
 function createWindow() {
@@ -322,7 +328,9 @@ app.whenReady().then(async () => {
     } else if (url.pathname.startsWith('/vision/wasm/')) {
       const name = url.pathname.slice('/vision/wasm/'.length);
       if (!name || path.basename(name) !== name || !/^[a-zA-Z0-9._-]+$/.test(name)) return new Response('Not found', { status: 404 });
-      assetPath = path.join(app.getAppPath(), 'node_modules', '@mediapipe', 'tasks-vision', 'wasm', name);
+      assetPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'vision', 'wasm', name)
+        : path.join(__dirname, '..', 'node_modules', '@mediapipe', 'tasks-vision', 'wasm', name);
     } else return new Response('Not found', { status: 404 });
     try {
       const bytes = fs.readFileSync(assetPath);

@@ -61,7 +61,7 @@ import { FilesetResolver, GestureRecognizer } from './node_modules/@mediapipe/ta
       await initializeGestureModel();
       $('#cameraStatus').textContent = 'Gesture model ready. Start camera when you want live recognition.';
     } catch (error) {
-      $('#cameraStatus').textContent = `Gesture model could not load: ${error.message}`;
+      $('#cameraStatus').textContent = `Gesture model could not load: ${error?.stack || String(error)}`;
     } finally { button.disabled = false; }
   };
 
@@ -82,7 +82,7 @@ import { FilesetResolver, GestureRecognizer } from './node_modules/@mediapipe/ta
       classifyFrame();
     } catch (error) {
       await stopCamera();
-      $('#cameraStatus').textContent = error.name === 'NotAllowedError' ? 'Camera permission was denied. You can still use voice or text support.' : `Could not start local gesture recognition: ${error.message}`;
+      $('#cameraStatus').textContent = error?.name === 'NotAllowedError' ? 'Camera permission was denied. You can still use voice or text support.' : `Could not start local gesture recognition: ${error?.stack || String(error)}`;
     }
   };
   $('#stopCamera').onclick = stopCamera;

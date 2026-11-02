@@ -45,14 +45,16 @@ async function processQueue(){
       text: message.text,
       generationConfig: new sherpa.GenerationConfig({ sid: 0, speed: 1.0, silenceScale: 0.2, phonemeCodepoints: phonemes }),
       onProgress: audio => {
-        const samples = audio.samples;
+        // Do not transfer the native addon's buffer: detaching it can make
+        // generateAsync reject while it is still settling its final result.
+        const samples = Float32Array.from(audio.samples);
         parentPort.postMessage({ type: 'audio', requestId: message.requestId, samples, sampleRate: voice.sampleRate }, [samples.buffer]);
         return 1;
       }
     });
     parentPort.postMessage({ type: 'done', requestId: message.requestId });
   } catch (error) {
-    parentPort.postMessage({ type: 'error', requestId: message.requestId, message: error.message });
+    parentPort.postMessage({ type: 'error', requestId: message.requestId, message: error?.stack || String(error) });
   }
   }
   busy=false;

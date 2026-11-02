@@ -36,6 +36,13 @@ parentPort.on('message', message => {
       stream = null;
       return;
     }
+    if (message.type === 'pause') {
+      // TTS replies are played through speakers. Drop the unfinished ASR
+      // stream while speaking so playback cannot be transcribed as a command.
+      stream = null;
+      lastText = '';
+      return;
+    }
     if (message.type !== 'audio' || !stream) return;
     stream.acceptWaveform({ samples: message.samples, sampleRate: 16000 });
     while (recognizer.isReady(stream)) recognizer.decode(stream);
