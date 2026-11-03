@@ -22,6 +22,6 @@ models/
 │       └── espeak-ng-data/
 ```
 
-The Windows installer build copies these assets only when they exist in the source tree. The packaged app still expects Ollama to be installed separately, with `qwen2.5:1.5b-instruct` and `qwen3-vl:2b` pulled into the target Windows account's Ollama model store.
+The Windows installer build copies these assets only when they exist in the source tree. The packaged app still expects Ollama to be installed separately, with `qwen2.5:1.5b-instruct` and `qwen3-vl:2b-instruct` pulled into the target Windows account's Ollama model store.
 
-ASL video interpretation does not require a separate model file; it uses the local `qwen3-vl:2b` Ollama model. This is experimental and not an ASL-trained interpreter.
+ASL video interpretation does not require a separate model file; it uses the local `qwen3-vl:2b-instruct` Ollama model. This is experimental and not an ASL-trained interpreter.

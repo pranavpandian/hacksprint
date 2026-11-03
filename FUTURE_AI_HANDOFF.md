@@ -11,7 +11,7 @@ BridgeUX is a Windows Electron accessibility prototype. It provides local Hindi/
 - Build the x64 Windows installer: `npm run dist:win`
 - The build output is `release/`, which is ignored by Git.
 - Large ASR/TTS model assets are excluded from Git. Follow `README.md` for downloads and exact paths.
-- Ollama is installed separately with `qwen2.5:1.5b-instruct` and `qwen3-vl:2b`.
+- Ollama is installed separately with `qwen2.5:1.5b-instruct` and `qwen3-vl:2b-instruct`.
 
 ## Main files
 

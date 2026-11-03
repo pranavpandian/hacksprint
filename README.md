@@ -47,7 +47,7 @@ These are practical recommendations, not a hardware compatibility guarantee. Per
 
    ```powershell
    ollama pull qwen2.5:1.5b-instruct
-   ollama pull qwen3-vl:2b
+   ollama pull qwen3-vl:2b-instruct
    ```
 
 5. Start BridgeUX and complete the required support and preferred-language setup. Choose whether to enable the microphone when prompted; speech follows the selected English or Hindi language. Select a display to analyze screen content. Camera permission is only needed for the experimental ASL demo.
@@ -68,7 +68,7 @@ Download and place the model files using [Local model setup](#local-model-setup)
 
 ```powershell
 ollama pull qwen2.5:1.5b-instruct
-ollama pull qwen3-vl:2b
+ollama pull qwen3-vl:2b-instruct
 ```
 
 Launch BridgeUX:
@@ -128,11 +128,11 @@ Install [Ollama](https://ollama.com/download/windows), then download the exact m
 
 ```powershell
 ollama pull qwen2.5:1.5b-instruct
-ollama pull qwen3-vl:2b
+ollama pull qwen3-vl:2b-instruct
 ollama list
 ```
 
-The assistant uses `qwen2.5:1.5b-instruct`; screen images and experimental ASL clips use `qwen3-vl:2b`. Ollama keeps these model weights in its own model store, not in this repository. This is a general vision model, not trained to reliably translate ASL. See [Qwen3-VL tags](https://ollama.com/library/qwen3-vl/tags) and [Qwen2.5 tags](https://ollama.com/library/qwen2.5/tags).
+The assistant uses `qwen2.5:1.5b-instruct`; screen images and experimental ASL clips use `qwen3-vl:2b-instruct`. Ollama keeps these model weights in its own model store, not in this repository. This is a general vision model, not trained to reliably translate ASL. See [Qwen3-VL tags](https://ollama.com/library/qwen3-vl/tags) and [Qwen2.5 tags](https://ollama.com/library/qwen2.5/tags).
 
 ## Build a Windows installer
 
@@ -161,11 +161,11 @@ The helper is optional and is not included in the Windows Electron installer. It
 | Problem | What to check |
 | --- | --- |
 | Ollama/model status is unavailable | Open PowerShell and run `ollama list`. Pull both exact tags above. Confirm Ollama responds locally before restarting BridgeUX. |
-| Screen vision returns HTTP 404 or says the model is missing | Run `ollama pull qwen3-vl:2b`, then verify that `ollama list` contains `qwen3-vl:2b`. |
+| Screen vision returns HTTP 404 or says the model is missing | Run `ollama pull qwen3-vl:2b-instruct`, then verify that `ollama list` contains `qwen3-vl:2b-instruct`. |
 | Local assistant falls back or says model unavailable | Run `ollama pull qwen2.5:1.5b-instruct` and verify the exact tag with `ollama list`. |
 | Speech recognition says the model is missing | Check that the four ASR files are directly inside `models/asr-nemotron-3.5-560ms-int8/`, then restart the app. |
 | Neural voice fails | Check the requested language's `.onnx`, `tokens.txt`, and `espeak-ng-data` files in its folder under `models/tts/`. |
-| ASL interpretation unavailable | Check Ollama is running and `qwen3-vl:2b` is installed; start the camera and try a short, well-lit signing clip. Results are experimental. |
+| ASL interpretation unavailable | Check Ollama is running and `qwen3-vl:2b-instruct` is installed; start the camera and try a short, well-lit signing clip. Results are experimental. |
 | npm install fails on a native dependency | Use 64-bit Node.js 22 LTS or newer. If npm specifically requests a C++ toolchain, install Visual Studio Build Tools with **Desktop development with C++**, then retry `npm ci`. |
 
 ## Privacy and safety

@@ -7,5 +7,6 @@ dist/
 *.log
 OllamaSetup.exe
 .bridgeux-voice-test-profile/
+.bridgeux-runtime-check/
 models/**
 !models/README.md
