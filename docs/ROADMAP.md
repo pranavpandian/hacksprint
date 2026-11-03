@@ -1,7 +1,19 @@
 # Roadmap
 
-- **Current Electron MVP:** accessible onboarding, local preferences, display settings, periodic local Moondream screen reading, user-approved mouse/keyboard actions, and user-invoked Chrome active-tab helper.
-- **Not installed by the app:** Ollama and the Moondream model weights; install them separately after explicit user choice.
-- **Planned:** live local speech recognition, language identification and translation; local landmark runtime and licensed language-specific sign dataset/classifier with evaluation; axe-core dashboard; NSIS installer.
+## Available in the current prototype
 
-Do not treat planned items as implemented. No Windows installer has been built.
+- Windows Electron app with local accessibility preferences, larger text, themes, spacing, and reduced motion.
+- User-started Hindi/English voice input and local read-aloud using separately installed speech assets.
+- Local Qwen assistant for explanations and drafting guidance.
+- User-selected, one-shot or periodic screen capture with local Qwen3-VL descriptions. A requested safe action can be suggested for explicit approval.
+- An experimental ASL video-to-text demo using a general vision model. This is not a trained sign-language translator.
+- An optional Chrome extension for user-invoked page readability through the local Python helper.
+
+## Work needed before a production accessibility release
+
+- Evaluate screen descriptions, voice, captions, and action proposals with disabled users and assistive-technology users; fix issues found in that testing.
+- Replace the general-vision ASL demo with a licensed, language-specific model trained and evaluated on consenting signers, or clearly keep it as a demo.
+- Add repeatable automated checks for renderer flows, model-unavailable states, IPC validation, and packaged Windows builds.
+- Publish a reproducible signed installer and setup guide, including verified model assets, licenses, and supported hardware.
+
+Do not describe the prototype as a screen-reader replacement, certified interpreter, or autonomous computer agent.

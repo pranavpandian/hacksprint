@@ -7,7 +7,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo This downloads local models for the assistant and screen reader:
+echo This downloads local models for the assistant and screen vision:
 echo   qwen2.5:1.5b-instruct
 echo   qwen3-vl:2b
 echo They run locally after download. No cloud AI service is used.

@@ -5,6 +5,7 @@ const { execFile, spawn } = require('node:child_process');
 const { promisify } = require('node:util');
 const { pathToFileURL, fileURLToPath } = require('node:url');
 const { Worker } = require('node:worker_threads');
+const { isSafeActionTask, validateSuggestedAction } = require('./screen-actions.cjs');
 
 
 const MODEL = 'qwen3-vl:2b';
@@ -185,20 +186,27 @@ async function inspectScreen(payload) {
   try { answer = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/gi, '')); }
   catch { answer = { summary: raw, nextAction: null }; }
   let action = answer.nextAction;
+  const task = payload.task.trim();
+  const requestsSafeAction = isSafeActionTask(task);
+  if (!action && requestsSafeAction) {
+    try {
+      const actionResponse = await fetch('http://127.0.0.1:11434/api/chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: MODEL, stream: false, think: false, format: 'json', keep_alive: '30m', options: { temperature: 0, num_ctx: 8192, num_predict: 180, num_gpu: 99 }, messages: [{ role: 'user', content: `The user explicitly requested this task: ${task}\nIf it requests exactly one safe, reversible click, key press, or text entry, return JSON with that single action and a short reason. Use screen-image pixel coordinates for clicks. Only type text that the user gave verbatim. Never submit, send, delete, purchase, pay, post, confirm, or invent personal/form data. If the task is unclear, risky, or cannot be followed exactly, return {"action":null}. Return only {"action":null} or {"action":{"type":"click","x":120,"y":80,"reason":"..."}}, {"type":"press","key":"TAB|ENTER|ESC|SPACE|BACKSPACE","reason":"..."}, or {"type":"type","text":"...","reason":"..."}.`, images: [payload.image] }] }),
+        signal: AbortSignal.timeout(30000)
+      });
+      if (actionResponse.ok) {
+        const actionResult = await actionResponse.json();
+        action = JSON.parse(String(actionResult.message?.content || '{}')).action || null;
+      }
+    } catch { action = null; }
+  }
+  if (action && Object.hasOwn(action, 'action')) action = action.action;
   if (action?.type === 'press' && action.key === 'ENTER' && (!/\b(?:please\s+)?(?:press|hit)\s+(?:the\s+)?(?:enter|return)\b/i.test(payload.task) || /\b(?:don't|do not|didn't|never|not)\b.{0,24}\b(?:press|hit|enter)\b/i.test(payload.task))) {
     action = null;
     answer.summary = `${String(answer.summary || 'I read the screen.')} I will not press Enter or submit unless you explicitly ask me to.`;
   }
-  if (action !== null && action !== undefined && (typeof action !== 'object' || Array.isArray(action))) {
-    action = null;
-  }
-  if (action !== null && action !== undefined) {
-    const validReason = typeof action.reason === 'string' && action.reason.length <= 500;
-    const validClick = action.type === 'click' && Number.isInteger(action.x) && Number.isInteger(action.y) && action.x >= 0 && action.x < payload.width && action.y >= 0 && action.y < payload.height;
-    const validType = action.type === 'type' && typeof action.text === 'string' && action.text.length <= 1000;
-    const validPress = action.type === 'press' && ['TAB', 'ENTER', 'ESC', 'SPACE', 'BACKSPACE'].includes(action.key);
-    if (!validReason || !(validClick || validType || validPress)) action = null;
-  }
+  action = validateSuggestedAction(action, payload, task);
   let summary = String(answer.summary || answer.description || answer.answer || answer.text || (raw.startsWith('{') ? '' : raw)).trim();
   if (!summary || /^(?:i\s+)?(?:inspected|read)\s+the\s+screen\.?$/i.test(summary)) {
     summary = 'The local vision model returned an empty description for this screenshot. Try asking it to identify one specific item, such as the main heading or error message.';

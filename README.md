@@ -147,12 +147,14 @@ The x64 NSIS installer is written to `release/`. The installer includes the loca
 
 ## Optional Chrome helper
 
+The helper uses Python 3 to serve the local assistant bridge. From the repository folder, start `Start-BridgeUX.bat` and leave its window open while using the extension.
+
 1. Open `chrome://extensions` in Chrome.
 2. Turn on **Developer mode**.
 3. Select **Load unpacked** and choose this repository's `browser-extension` folder.
-4. Use its button on a page when you want the extension to read that page.
+4. Use its button on a page when you want the extension to apply display adjustments or send selected page text to local Ollama for explanation.
 
-The helper is optional and is not included in the Windows Electron installer. It reads page content only when the user invokes it.
+The helper is optional and is not included in the Windows Electron installer. It reads page content only when the user invokes it. Stop the local bridge by closing the `Start-BridgeUX.bat` window.
 
 ## Troubleshooting
 

@@ -168,7 +168,7 @@
       return;
     }
 
-    const screenRequest = /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|button|form field|submit this)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर/.test(text);
+    const screenRequest = /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|button|form field|submit this)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर|क्लिक|टाइप|खोलो|खोलें|चुनो|चुनें/.test(text);
     if (screenRequest) {
       $('#screenTask').value = text;
       $('#screenHelper').scrollIntoView({ behavior: 'smooth' });

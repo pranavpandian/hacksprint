@@ -62,8 +62,9 @@
       const selected = recent.length <= 4 ? recent : [0, 1 / 3, 2 / 3, 1].map(part => recent[Math.round(part * (recent.length - 1))]);
       const text = await window.bridgeux.translateSignVideo(selected);
       $('#signResult').textContent = text;
-      $('#typeSignText').disabled = !text || text.startsWith('I could not confidently');
-      $('#cameraStatus').textContent = 'Review the interpretation. It may be wrong.';
+      const uncertain = !text || /(?:could not|couldn't|unable to|cannot|can't).{0,60}(?:confident|interpret|recognize|see)|(?:not enough|no clear) visual evidence/i.test(text);
+      $('#typeSignText').disabled = uncertain;
+      $('#cameraStatus').textContent = uncertain ? 'The model was unsure, so typing is disabled. Try signing closer to the camera in better light.' : 'Review the experimental interpretation carefully. It may be wrong.';
     } catch (error) {
       $('#signResult').textContent = error.message;
       $('#cameraStatus').textContent = 'Local interpretation failed.';

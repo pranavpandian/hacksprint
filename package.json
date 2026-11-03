@@ -6,6 +6,7 @@
   "main": "electron/main.cjs",
   "scripts": {
     "start": "electron .",
+    "test": "node --test test/*.test.cjs",
     "dist:win": "electron-builder --win nsis --x64"
   },
   "devDependencies": {

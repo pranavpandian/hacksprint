@@ -4,7 +4,7 @@ BridgeUX stores accessibility preferences in Electron's local browser storage on
 
 ## Microphone and speech
 
-On first launch, BridgeUX asks whether the user wants voice support. It requests microphone permission only after the user selects **Enable microphone**. If allowed, live listening starts and is remembered for later launches; the user can stop it at any time in the app. Audio is streamed to the local Nemotron speech-recognition model through the app's audio worker. BridgeUX does not write microphone recordings to disk or send audio to a cloud speech service. Reply audio is generated on-device by the local Piper voice model.
+On first launch, BridgeUX asks whether the user wants voice support. It requests microphone permission only after the user selects **Enable microphone**. If allowed, live listening starts for that session; BridgeUX does not silently restart the microphone on later launches. The app remembers that the welcome prompt was shown. The user can start or stop listening at any time. Audio is streamed to the local Nemotron speech-recognition model through the app's audio worker. BridgeUX does not write microphone recordings to disk or send audio to a cloud speech service. Reply audio is generated on-device by the local Piper voice model.
 
 ## Screen sharing
 
@@ -12,9 +12,9 @@ Screen capture is off until the user selects a display and starts a capture or l
 
 The content visible on a screen can be sensitive. Review the screen before starting capture or live help. Ollama, its model downloads, and any other installed software have their own behavior and terms outside BridgeUX.
 
-## Camera and gestures
+## Camera and experimental ASL demo
 
-Camera access is optional and begins only when the user starts the gesture feature and grants permission. The local MediaPipe model processes frames for seven common static gesture labels. BridgeUX does not record or upload the camera video. This is not sign-language translation.
+Camera access is optional and begins only after the user starts the camera and grants permission. A short rolling buffer of frames is kept in app memory and sent to the local Ollama Qwen3-VL model only when the user requests interpretation. The camera feed and frames are not saved by BridgeUX or sent to a cloud service. This general vision model is not trained for ASL and its guesses are experimental, not a reliable translation.
 
 ## Browser helper and network
 

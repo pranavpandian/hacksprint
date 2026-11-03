@@ -56,9 +56,9 @@ class Handler(SimpleHTTPRequestHandler):
                     tags = json.loads(resp.read()).get("models", [])
                 names = [m.get("name", "") for m in tags]
                 ready = any(n == MODEL or n.startswith(MODEL + ":") for n in names)
-                self.reply({"ready": ready, "model": MODEL, "installed": names})
+                self.reply({"available": True, "ready": ready, "model": MODEL, "installed": names})
             except Exception:
-                self.reply({"ready": False, "model": MODEL, "installed": []})
+                self.reply({"available": False, "ready": False, "model": MODEL, "installed": []})
             return
         super().do_GET()
 
