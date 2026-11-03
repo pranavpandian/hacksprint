@@ -109,8 +109,9 @@
   $('#plainToggle').onclick = () => { $('#plainResult').hidden = !$('#plainResult').hidden; $('#plainToggle').textContent = $('#plainResult').hidden ? 'Simplify instructions' : 'Hide simpler instructions'; };
 
   $('#startCaption').onclick = async () => {
-    try { await window.bridgeuxStartSystemCaptions(); $('#startCaption').disabled = true; $('#pauseCaption').disabled = false; $('#pauseCaption').textContent = 'Stop live captions'; }
-    catch (error) { $('#liveCaptionStatus').textContent = error.message; }
+    $('#startCaption').disabled = true;
+    try { await window.bridgeuxStartSystemCaptions(); $('#pauseCaption').disabled = false; $('#pauseCaption').textContent = 'Stop live captions'; }
+    catch (error) { $('#startCaption').disabled = false; $('#liveCaptionStatus').textContent = error.message; }
   };
   $('#pauseCaption').onclick = async () => {
     await window.bridgeuxStopSystemCaptions?.();
@@ -118,9 +119,9 @@
   };
   $('#clearCaption').onclick = () => { $('#captionText').textContent = 'Live captions will appear here when you start system audio capture.'; };
   window.addEventListener('bridgeux:captions-changed', event => {
-    const running = Boolean(event.detail?.running);
-    $('#startCaption').disabled = running;
-    $('#pauseCaption').disabled = !running;
+    const busy = Boolean(event.detail?.busy);
+    $('#startCaption').disabled = busy;
+    $('#pauseCaption').disabled = !event.detail?.running;
     $('#pauseCaption').textContent = 'Stop captions';
   });
   $('#resetSettings').onclick = () => {

@@ -5,23 +5,25 @@
   let capture = null;
   let sink = null;
   let running = false;
+  let starting = false;
 
   const setStatus = text => {
     const element = document.querySelector('#liveCaptionStatus');
     if (element) element.textContent = text;
     window.bridgeux?.setAgentStatus({ captionsActive: running, message: text }).catch(() => {});
-    window.dispatchEvent(new CustomEvent('bridgeux:captions-changed', { detail: { running, text } }));
+    window.dispatchEvent(new CustomEvent('bridgeux:captions-changed', { detail: { running, busy: running || starting, text } }));
   };
 
   async function start() {
-    if (running) return true;
+    if (running || starting) return true;
     if (!navigator.mediaDevices?.getDisplayMedia) throw new Error('System audio capture is unavailable in this app version.');
+    starting = true;
+    try {
     setStatus('Connecting to computer audio…');
-    const request = navigator.mediaDevices.getDisplayMedia({ audio: true, video: { frameRate: 1, width: 1, height: 1 } });
+    const request = navigator.mediaDevices.getDisplayMedia({ audio: true, video: { frameRate: { ideal: 1, max: 1 }, width: { ideal: 1 }, height: { ideal: 1 } } });
     context = new AudioContext();
     await context.resume();
     stream = await request;
-    stream.getVideoTracks().forEach(track => track.stop());
     if (!stream.getAudioTracks().some(track => track.readyState === 'live')) throw new Error('Windows did not provide a system audio track. Check that audio is playing and try again.');
     const language = await window.bridgeux.getVoiceLanguage();
     const ready = await window.bridgeux.startSpeech(language, 'captions');
@@ -39,6 +41,7 @@
     await window.bridgeux.updateCaptionOverlay(true, 'Listening to computer audio…');
     stream.getAudioTracks().forEach(track => track.addEventListener('ended', stop, { once: true }));
     return true;
+    } finally { starting = false; }
   }
 
   async function stop() {
@@ -56,8 +59,10 @@
   }
 
   window.bridgeuxStartSystemCaptions = async () => {
+    if (running || starting) return true;
     try { return await start(); }
     catch (error) { await stop(); setStatus(`Could not start live captions: ${error.message}`); throw error; }
+    finally { starting = false; }
   };
   window.bridgeuxStopSystemCaptions = stop;
   window.bridgeux?.onSpeechResult(result => {
