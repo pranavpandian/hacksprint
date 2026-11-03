@@ -3,7 +3,7 @@
 const http = require('node:http');
 const { randomUUID } = require('node:crypto');
 
-function createBrowserBridge(token, port = 18765) {
+function createBrowserBridge(token, port = 18765, assist = null) {
   const jobs = [];
   const waiting = new Map();
   let connectedAt = 0;
@@ -14,6 +14,26 @@ function createBrowserBridge(token, port = 18765) {
     if (req.method === 'OPTIONS') { res.writeHead(204).end(); return; }
     if (req.headers.authorization !== `Bearer ${token}`) { res.writeHead(401).end(); return; }
     const route = new URL(req.url, `http://127.0.0.1:${port}`).pathname;
+    if (req.method === 'GET' && route === '/v1/status') {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ ok: true, connected: Date.now() - connectedAt < 120000 }));
+      return;
+    }
+    if (req.method === 'POST' && route === '/v1/assist') {
+      let data = '';
+      req.on('data', chunk => { data += chunk; if (data.length > 16000) req.destroy(); });
+      req.on('end', async () => {
+        try {
+          if (typeof assist !== 'function') throw new Error('Local page help is unavailable.');
+          const result = await assist(JSON.parse(data));
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(result));
+        } catch (error) {
+          res.writeHead(400, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: error.message || 'Local page help failed.' }));
+        }
+      });
+      return;
+    }
     if (req.method === 'GET' && route === '/v1/poll') {
       connectedAt = Date.now();
       const job = jobs.shift();

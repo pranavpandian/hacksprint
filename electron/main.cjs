@@ -570,6 +570,20 @@ ipcMain.handle('bridgeux:browser-media', async (_event, payload) => {
   if (result?.error) throw new Error(result.error);
   return result;
 });
+ipcMain.handle('bridgeux:agent-step', async (_event, payload) => {
+  const intent = browserMediaIntent(payload?.goal);
+  if (!intent) return planAgentStep(payload);
+  if (!agentEnabled) throw new Error('Turn on hands-free agent mode first.');
+  const snapshot = await getUiSnapshot();
+  let isYoutube = false;
+  try { isYoutube = /(?:^|\.)youtube\.com$/i.test(new URL(snapshot?.url).hostname); } catch {}
+  if (!snapshot || snapshot.source !== 'browser' || !snapshot.media?.present || !isYoutube) {
+    throw new Error('To control YouTube playback, connect the BridgeUX browser extension and leave the playing video tab active.');
+  }
+  const result = await browserBridge.request('action', { action: { type: 'media', intent } });
+  if (result?.error) throw new Error(result.error);
+  return { status: 'done', mode: 'browser', message: result?.message || 'Done.' };
+});
 ipcMain.handle('bridgeux:agent-status', (_event, payload) => {
   const active = payload?.active === true;
   if (active) {
@@ -583,7 +597,6 @@ ipcMain.handle('bridgeux:agent-status', (_event, payload) => {
 ipcMain.on('bridgeux:overlay-stop', () => {
   for (const win of BrowserWindow.getAllWindows()) if (win !== agentStatusWindow && !win.isDestroyed()) win.webContents.send('bridgeux:agent-stop-request');
 });
-ipcMain.handle('bridgeux:agent-step', (_event, payload) => planAgentStep(payload));
 ipcMain.handle('bridgeux:agent-action', (_event, payload) => performAgentAction(payload));
 ipcMain.handle('bridgeux:ui-snapshot', () => getUiSnapshot());
 ipcMain.handle('bridgeux:analyze-ui', (_event, payload) => analyzeUiScreen(payload));
@@ -630,7 +643,12 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   browserBridgeToken = loadBrowserBridgeToken();
-  browserBridge = createBrowserBridge(browserBridgeToken);
+  browserBridge = createBrowserBridge(browserBridgeToken, 18765, payload => askLocal({
+    task: payload?.task,
+    text: payload?.text,
+    language: ['English', 'हिन्दी'].includes(payload?.language) ? payload.language : 'English',
+    supports: []
+  }));
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
     callback(permission === 'media');
   });

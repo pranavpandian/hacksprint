@@ -1,1 +1,25 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>BridgeUX browser agent</title><link rel="stylesheet" href="popup.css"></head><body><main><p class="eyebrow">BRIDGEUX · BROWSER AGENT</p><h1>Connect this browser</h1><p>Paste the pairing key shown in BridgeUX. The local agent can then read and act on the active tab when you ask.</p><label for="pairingKey">Pairing key</label><input id="pairingKey" type="password" autocomplete="off" placeholder="Paste BridgeUX key"><button id="connect" class="primary">Connect to BridgeUX</button><button id="disconnect" class="secondary">Disconnect</button><div id="connection" role="status" aria-live="polite">Not connected.</div><hr><h2>Page readability</h2><div class="buttons"><button id="larger">Larger text</button><button id="contrast">High contrast</button><button id="reset">Reset page style</button></div><label for="task">Local page help</label><select id="task"><option value="simplify">Simplify page text</option><option value="steps">Explain it as steps</option><option value="explain">Explain selected text</option></select><button id="read">Read and explain this page</button><button id="selected">Explain selected text</button><div id="result" role="status" aria-live="polite">Page help runs only when you request it.</div><p class="fine">The connection stays on this computer. Disconnect here to stop browser access.</p></main><script src="popup.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>BridgeUX browser agent</title><link rel="stylesheet" href="popup.css"></head>
+<body><main>
+  <p class="eyebrow">BRIDGEUX · BROWSER AGENT</p>
+  <h1>Connect this browser</h1>
+  <p>Pair once to let BridgeUX read the active page and control supported browser actions when you ask.</p>
+  <label for="pairingKey">Pairing key</label>
+  <input id="pairingKey" type="password" autocomplete="off" placeholder="Paste the key shown in BridgeUX">
+  <button id="connect" class="primary">Connect to BridgeUX</button>
+  <button id="disconnect" class="secondary">Disconnect browser</button>
+  <div id="connection" role="status" aria-live="polite">Checking BridgeUX…</div>
+  <hr>
+  <h2>Make this page easier</h2>
+  <button id="larger">Larger page text</button>
+  <button id="contrast">Higher page contrast</button>
+  <button id="reset" class="secondary">Reset page display</button>
+  <label for="task">Explain the active page</label>
+  <select id="task"><option value="explain">Explain it simply</option><option value="steps">Give me steps</option><option value="simplify">Simplify the wording</option></select>
+  <button id="read" class="primary">Read and explain page</button>
+  <button id="selected" class="secondary">Explain selected text</button>
+  <div id="result" role="status" aria-live="polite">Page help runs locally when you request it.</div>
+  <p class="fine">Your page text stays on this computer. Disconnect to stop browser access.</p>
+</main><script src="popup.js"></script></body>
+</html>

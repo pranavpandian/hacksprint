@@ -160,10 +160,10 @@ The x64 NSIS installer is written to `release/`. The installer includes the loca
 
 1. In Chrome or Brave, open Extensions and enable Developer mode.
 2. Choose Load unpacked and select the `browser-extension` path shown in BridgeUX Screen helper.
-3. Copy the pairing key from BridgeUX, open the BridgeUX Browser Agent extension popup, and choose Connect. The extension stays attached until you disconnect it.
+3. Copy the pairing key from BridgeUX, open the BridgeUX Browser Agent extension popup, and choose Connect. Wait for the popup to confirm the local connection. After installing an updated BridgeUX build, use Reload on the extension's card in the browser Extensions page before reconnecting.
 
 The browser extension reads the active tab page structure locally when BridgeUX requests it. It can click links/buttons and fill visible non-password fields. Do not connect on pages you do not want the local agent to control.
 
 ## Browser extension tools
 
-The bundled Chrome/Brave extension provides both browser-agent access and page readability controls. Load it once from the extension path shown in BridgeUX, then connect with the pairing key. Keep the extension disconnected when you do not want browser control. It communicates only with the local BridgeUX service.
+The bundled Chrome/Brave extension provides browser-agent access, direct YouTube play/pause/mute controls, and page readability controls. Its popup reads and explains the active page through BridgeUX's local assistant; it does not need the older Python helper or port 8765. Load it from the extension path shown in BridgeUX, connect with the pairing key, and reload the extension after app updates. Keep it disconnected when you do not want browser access. It communicates only with the local BridgeUX service.

@@ -2,7 +2,13 @@
 
 let active = false;
 let token = '';
+let running = false;
 const bridge = 'http://127.0.0.1:18765';
+
+async function verifyBridge(secret) {
+  const response = await fetch(`${bridge}/v1/status`, { headers: { Authorization: `Bearer ${secret}` } });
+  return response.ok;
+}
 
 async function postResult(id, result) {
   await fetch(`${bridge}/v1/result`, {
@@ -91,6 +97,8 @@ async function pageTask(job) {
 }
 
 async function run() {
+  if (running) return;
+  running = true;
   while (active) {
     try {
       const response = await fetch(`${bridge}/v1/poll`, { headers: { Authorization: `Bearer ${token}` } });
@@ -104,21 +112,49 @@ async function run() {
       await chrome.storage.local.set({ connected: false });
     }
   }
+  running = false;
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'connect') {
-    token = String(message.token || '');
-    active = Boolean(token);
-    chrome.storage.local.set({ token, connected: active });
-    if (active) run();
-    sendResponse({ connected: active });
+    const candidate = String(message.token || '').trim();
+    verifyBridge(candidate).then(connected => {
+      token = connected ? candidate : '';
+      active = connected;
+      chrome.storage.local.set({ token, connected: active });
+      if (active) run();
+      sendResponse({ connected: active, error: connected ? '' : 'BridgeUX rejected this pairing key or is not running.' });
+    }).catch(() => sendResponse({ connected: false, error: 'BridgeUX is not running. Open the desktop app and try again.' }));
+    return true;
   } else if (message.type === 'disconnect') {
     active = false;
     token = '';
     chrome.storage.local.set({ token: '', connected: false });
     sendResponse({ connected: false });
-  } else if (message.type === 'status') sendResponse({ connected: active });
+  } else if (message.type === 'status') {
+    chrome.storage.local.get(['token', 'connected']).then(async saved => {
+      token = saved.token || token;
+      active = Boolean(saved.connected && token && await verifyBridge(token).catch(() => false));
+      if (active) run();
+      sendResponse({ connected: active });
+    });
+    return true;
+  } else if (message.type === 'inspect' || message.type === 'assist') {
+    (async () => {
+      if (!active || !token) throw Error('Connect this extension to BridgeUX first.');
+      if (message.type === 'inspect') return pageTask({ type: 'snapshot' });
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (!tab?.id) throw Error('No active tab.');
+      const [selected] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: onlySelected => onlySelected ? window.getSelection()?.toString() || '' : (document.body?.innerText || '').slice(0, 6500), args: [Boolean(message.selectedOnly)] });
+      const text = String(selected?.result || '').trim();
+      if (!text) throw Error(message.selectedOnly ? 'Select text on the page first.' : 'This page has no readable text.');
+      const response = await fetch(`${bridge}/v1/assist`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ task: message.task || 'explain', text, language: 'English' }) });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || 'BridgeUX could not explain this page.');
+      return { ...result, title: tab.title, url: tab.url };
+    })().then(result => sendResponse({ ok: true, result })).catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
   return true;
 });
 

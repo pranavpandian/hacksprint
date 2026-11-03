@@ -100,12 +100,16 @@ test('first-video shortcut selects the first visible YouTube watch link from the
 test('local browser bridge authenticates the extension and returns page task results', async () => {
   const { createBrowserBridge } = require('../electron/browser-bridge.cjs');
   const token = 'test-pairing-token';
-  const bridge = createBrowserBridge(token, 0);
+  const bridge = createBrowserBridge(token, 0, async request => ({ answer: `Explained: ${request.text}`, source: 'test-local-model' }));
   try {
     await new Promise(resolve => setTimeout(resolve, 20));
     const base = `http://127.0.0.1:${bridge.port}`;
     const unauthorized = await fetch(`${base}/v1/poll`);
     assert.equal(unauthorized.status, 401);
+    const status = await fetch(`${base}/v1/status`, { headers: { Authorization: `Bearer ${token}` } });
+    assert.equal((await status.json()).ok, true);
+    const assist = await fetch(`${base}/v1/assist`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ task: 'explain', text: 'a visible page', language: 'English' }) });
+    assert.equal((await assist.json()).answer, 'Explained: a visible page');
     await fetch(`${base}/v1/poll`, { headers: { Authorization: `Bearer ${token}` } });
     const result = bridge.request('snapshot');
     const response = await fetch(`${base}/v1/poll`, { headers: { Authorization: `Bearer ${token}` } });
@@ -113,5 +117,12 @@ test('local browser bridge authenticates the extension and returns page task res
     assert.equal(job.type, 'snapshot');
     await fetch(`${base}/v1/result`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: job.id, result: { url: 'https://example.com', elements: [] } }) });
     assert.equal((await result).url, 'https://example.com');
+    const mediaAction = bridge.request('action', { action: { type: 'media', intent: 'pause' } });
+    const mediaPoll = await fetch(`${base}/v1/poll`, { headers: { Authorization: `Bearer ${token}` } });
+    const mediaJob = await mediaPoll.json();
+    assert.equal(mediaJob.type, 'action');
+    assert.equal(mediaJob.payload.action.intent, 'pause');
+    await fetch(`${base}/v1/result`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: mediaJob.id, result: { ok: true, message: 'Paused the YouTube video.' } }) });
+    assert.equal((await mediaAction).message, 'Paused the YouTube video.');
   } finally { bridge.close(); }
 });
