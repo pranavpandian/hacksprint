@@ -33,8 +33,22 @@ function validateSuggestedAction(action, { width, height }, task) {
   return null;
 }
 
-function isSafeAgentGoal(goal) {
-  return typeof goal === 'string' && goal.trim().length >= 3 && goal.length <= 500 && !riskyAgentTask.test(goal);
+function isSafeAgentGoal(goal, snapshot = null) {
+  return isSafeAgentGoalForScreen(goal, snapshot);
+}
+
+function isGoogleFormSubmitGoal(goal, snapshot) {
+  const page = `${snapshot?.url || ''} ${snapshot?.windowTitle || ''}`;
+  return typeof goal === 'string' && /\bgoogle\s+forms?\b/i.test(goal) && /\bsubmit\b/i.test(goal) &&
+    /(?:docs\.google\.com\/forms|forms\.gle|google forms)/i.test(page);
+}
+
+function isSafeAgentGoalForScreen(goal, snapshot) {
+  if (typeof goal !== 'string' || goal.trim().length < 3 || goal.length > 500) return false;
+  const allowsGoogleFormSubmit = isGoogleFormSubmitGoal(goal, snapshot);
+  const withoutSubmit = goal.replace(/\bsubmit\b/gi, '');
+  return (!riskyAgentTask.test(goal) || (allowsGoogleFormSubmit && !riskyAgentTask.test(withoutSubmit))) &&
+    (!/\bsubmit\b/i.test(goal) || allowsGoogleFormSubmit);
 }
 
 function validateAgentAction(action, { width, height }, goal) {
@@ -58,10 +72,12 @@ function validateAgentAction(action, { width, height }, goal) {
 }
 
 function validateUiAgentAction(action, snapshot, goal) {
-  if (!isSafeAgentGoal(goal) || !action || typeof action !== 'object' || Array.isArray(action) ||
+  if (!isSafeAgentGoalForScreen(goal, snapshot) || !action || typeof action !== 'object' || Array.isArray(action) ||
       typeof action.reason !== 'string' || !action.reason.trim() || action.reason.length > 300) return null;
   const element = snapshot?.elements?.find(item => item.id === action.elementId);
-  if (!element || element.password || !element.name || riskyAgentTarget.test(element.name)) return null;
+  const maySubmitGoogleForm = isGoogleFormSubmitGoal(goal, snapshot) && element?.role === 'Button' && /^submit$/i.test(element.name.trim());
+  if (!element || element.password || !element.name || (riskyAgentTarget.test(element.name) && !maySubmitGoogleForm)) return null;
+  if (action.type === 'invoke' && maySubmitGoogleForm) return action;
   const targetIsSafe = safeClickTarget.test(element.name) ||
     (['Hyperlink', 'TabItem', 'MenuItem'].includes(element.role) && !riskyAgentTarget.test(element.name)) ||
     (['ListItem', 'Button'].includes(element.role) && /\b(?:open|start|launch)\b.{0,30}\b(?:browser|brave|chrome|edge|firefox)\b/i.test(goal) && /\b(?:brave|chrome|edge|firefox|browser)\b/i.test(element.name));
@@ -72,4 +88,4 @@ function validateUiAgentAction(action, snapshot, goal) {
   return null;
 }
 
-module.exports = { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction };
+module.exports = { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, isGoogleFormSubmitGoal, validateAgentAction, validateUiAgentAction };

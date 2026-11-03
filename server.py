@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 
 ROOT = Path(__file__).resolve().parent
-MODEL = "qwen2.5:1.5b-instruct"
+MODEL = "hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M"
 
 def local_fallback(task, text, language="English"):
     text = text.strip()
@@ -25,7 +25,7 @@ def local_fallback(task, text, language="English"):
     if task == "simplify":
         return "In simpler words: " + text + "\n\nI’m using a basic offline fallback. Check this wording against the original before relying on it."
     if task == "explain":
-        return "I can help explain this, but the local AI model is unavailable. Install Ollama with Qwen2.5 1.5B, or ask the organization that provided this form. Original text: " + text
+        return "I can help explain this, but the local AI model is unavailable. Install Ollama with Qwen3.5 4B, or ask the organization that provided this form. Original text: " + text
     return "I can help you plan an answer, but I should not make up personal details. Think about: what is being asked, which facts you can confirm, and what you want the reader to understand. Write a draft in your own words, then review it for accuracy."
 
 class Handler(SimpleHTTPRequestHandler):
@@ -47,7 +47,7 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("Invalid task or text.")
             text = text[:8000]
             prompt = ("You are BridgeUX, a careful local accessibility assistant. Reply in " + ("Hindi" if language == "हिन्दी" else "English") + ". Help the user understand a form or draft an answer. Never invent personal facts, eligibility rules, deadlines, or requirements. Keep the original meaning. Clearly say when you are unsure. The user must review and choose any answer.\nTask: " + task + "\nUser text: " + text)
-            req = Request("http://127.0.0.1:11434/api/generate", data=json.dumps({"model": MODEL, "prompt": prompt, "stream": False, "options": {"temperature": 0.2}}).encode(), headers={"Content-Type": "application/json"}, method="POST")
+            req = Request("http://127.0.0.1:11434/api/generate", data=json.dumps({"model": MODEL, "prompt": prompt, "stream": False, "think": False, "options": {"temperature": 0.2}}).encode(), headers={"Content-Type": "application/json"}, method="POST")
             with urlopen(req, timeout=70) as resp:
                 result = json.loads(resp.read())
             answer = result.get("response", "").strip()
@@ -55,7 +55,7 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("The local model returned an empty answer.")
             self.reply({"answer": answer, "source": "local Ollama · " + MODEL})
         except (URLError, TimeoutError, HTTPError, json.JSONDecodeError, ValueError, OSError) as exc:
-            why = "Qwen2.5 is not available from local Ollama yet. Showing a basic offline helper instead."
+            why = "Qwen3.5 is not available from local Ollama yet. Showing a basic offline helper instead."
             self.reply({"answer": local_fallback(task if 'task' in locals() else "help", text if 'text' in locals() else "", language if 'language' in locals() else "English"), "source": why})
 
     def do_GET(self):

@@ -2,15 +2,15 @@
 
 BridgeUX is a Windows desktop accessibility prototype that combines voice interaction, screen reading, and experimental ASL video-to-text. Its AI and speech inference run locally: prompts and short camera clips go to Ollama on `127.0.0.1`; audio and video are processed on the device.
 
-> **Current scope:** BridgeUX is an accessibility prototype, not a replacement for a screen reader or interpreter. Its optional hands-free agent can perform a short run of constrained navigation/search actions after the user enables it; it does not submit forms or perform sensitive actions. ASL interpretation uses a general local vision model and is not reliable or ASL-trained.
+> **Current scope:** BridgeUX is an accessibility prototype, not a replacement for a screen reader or interpreter. The agent reads the active app's Windows accessibility tree on each action, avoiding screenshots when the app exposes page content. It can submit a Google Form only when the user explicitly asks. ASL interpretation uses a general local vision model and is not reliable or ASL-trained.
 
 ## What it includes
 
 - Streaming English or Hindi speech-to-text using the local NVIDIA Nemotron 3.5 model through sherpa-onnx. First launch requires the user to choose accessibility supports and a preferred language; speech recognition and replies then use that choice.
 - Local English and Hindi Piper neural voices for replies and read-aloud.
-- A local Qwen assistant and Hugging Face Qwen3-VL 4B vision model served by Ollama.
+- One Hugging Face Qwen3.5 4B model for the local assistant, screen vision, and experimental ASL clips, served by Ollama.
 - Fast screen reading through Windows UI Automation when the foreground app exposes accessible text and controls; selected-display screenshots remain the fallback for visual-only content.
-- Explicit spoken PC tasks start a one-shot agent automatically, with no display selection when Windows exposes accessible controls. For longer follow-up tasks, enable hands-free mode once; it can perform up to 24 low-risk navigation steps. For forms it asks only for information the user has not provided and never submits. Say “stop agent” or press **Stop agent** to interrupt.
+- Explicit spoken PC tasks start a one-shot agent automatically, with no display selection when Windows exposes accessible controls. For longer tasks, enable hands-free mode once; each step reads the current browser/app accessibility tree. It asks only for missing form values and can submit a Google Form after an explicit request. Say “stop agent” or press **Stop agent** to interrupt.
 - Voice commands such as “open example.com”, “visit Wikipedia”, or “go to the NASA website” open that site in the default browser. It resolves named sites with web search and supports HTTP/HTTPS links.
 - Spoken web searches for flights, weather, news, and other current information. BridgeUX sends the spoken search query to DuckDuckGo, then summarizes result snippets locally and displays source links. Check provider pages for live prices and availability.
 - A user-started camera view that samples a few recent frames for experimental ASL video-to-text using the local Qwen3-VL model, with spoken replies. Optional MediaPipe hand controls move the pointer, pinch to click, and use a V-sign swipe to scroll. ASL translation quality is not guaranteed; the model is not ASL-trained.
@@ -49,8 +49,7 @@ These are practical recommendations, not a hardware compatibility guarantee. Per
 4. In the BridgeUX folder, run `Install-Local-Vision-Model.bat`, or open PowerShell and run:
 
    ```powershell
-   ollama pull qwen2.5:1.5b-instruct
-   ollama pull hf.co/Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M
+   ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
    ```
 
 5. Start BridgeUX and complete the required support and preferred-language setup. Choose whether to enable the microphone when prompted; speech follows the selected English or Hindi language. Select a display to analyze screen content. Camera permission is only needed for the experimental ASL demo.
@@ -70,8 +69,7 @@ npm ci
 Download and place the model files using [Local model setup](#local-model-setup), then download the local Ollama models:
 
 ```powershell
-ollama pull qwen2.5:1.5b-instruct
-ollama pull hf.co/Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M
+ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
 ```
 
 Launch BridgeUX:
@@ -80,7 +78,7 @@ Launch BridgeUX:
 npm start
 ```
 
-Ollama normally runs as a local background service. BridgeUX tries to start it if it is installed but not already running. AI status in the app should show both Qwen models as ready.
+Ollama normally runs as a local background service. BridgeUX tries to start it if it is installed but not already running. AI status in the app should show the Qwen3.5 model as ready.
 
 ## Local model setup
 
@@ -130,12 +128,11 @@ models/tts/vits-piper-hi_IN-pratham-medium/espeak-ng-data/
 Install [Ollama](https://ollama.com/download/windows), then download the exact model names BridgeUX uses:
 
 ```powershell
-ollama pull qwen2.5:1.5b-instruct
-ollama pull hf.co/Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M
+ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
 ollama list
 ```
 
-The assistant uses `qwen2.5:1.5b-instruct`; screen images and experimental ASL clips use Hugging Face's [Qwen3-VL-4B-Instruct-GGUF Q4_K_M](https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct-GGUF), around 3 GB in Ollama's model store. The app has a faster UI Automation path for ordinary text and controls. Qwen3-VL is a general vision model, not trained to reliably translate ASL.
+The assistant, visual screen fallback, and experimental ASL clips use Hugging Face's [Qwen3.5-4B-GGUF Q4_K_M](https://huggingface.co/gguf/Qwen3.5-4B-GGUF), around 3.5 GB in Ollama's model store. Browser pages are read through Windows UI Automation first, so actions such as opening the first visible YouTube video use the page's actual link instead of image interpretation. Qwen3.5 is a general vision model, not trained to reliably translate ASL.
 
 ### 4. On-device hand gesture controls
 
@@ -157,7 +154,7 @@ npm ci
 npm run dist:win
 ```
 
-The x64 NSIS installer is written to `release/`. The installer includes the local speech and voice model files when present. It does **not** include Ollama or the Ollama Qwen weights; install Ollama and pull those two models separately on each target machine. Model binaries and the generated installer are excluded from Git.
+The x64 NSIS installer is written to `release/`. The installer includes the local speech and voice model files when present. It does **not** include Ollama or the Ollama Qwen weights; install Ollama and pull the model separately on each target machine. Model binaries and the generated installer are excluded from Git.
 
 ## Optional Chrome helper
 
@@ -174,12 +171,11 @@ The helper is optional and is not included in the Windows Electron installer. It
 
 | Problem | What to check |
 | --- | --- |
-| Ollama/model status is unavailable | Open PowerShell and run `ollama list`. Pull both exact tags above. Confirm Ollama responds locally before restarting BridgeUX. |
-| Screen vision returns HTTP 404 or says the model is missing | Run `ollama pull hf.co/Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M`, then verify that `ollama list` contains that exact tag. |
-| Local assistant falls back or says model unavailable | Run `ollama pull qwen2.5:1.5b-instruct` and verify the exact tag with `ollama list`. |
+| Ollama/model status is unavailable | Open PowerShell and run `ollama list`. Pull the exact tag above and confirm Ollama responds locally before restarting BridgeUX. |
+| Screen vision or local assistant returns HTTP 404 or says the model is missing | Run `ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M`, then verify that `ollama list` contains that exact tag. |
 | Speech recognition says the model is missing | Check that the four ASR files are directly inside `models/asr-nemotron-3.5-560ms-int8/`, then restart the app. |
 | Neural voice fails | Check the requested language's `.onnx`, `tokens.txt`, and `espeak-ng-data` files in its folder under `models/tts/`. |
-| ASL interpretation unavailable | Check Ollama is running and the Qwen3-VL 4B tag is installed; start the camera and try a short, well-lit signing clip. Results are experimental. |
+| ASL interpretation unavailable | Check Ollama is running and the Qwen3.5 4B tag is installed; start the camera and try a short, well-lit signing clip. Results are experimental. |
 | Hand controls fail to load | Start the camera, allow camera access, then press **Enable hand controls**. The on-device MediaPipe asset is bundled with the installer. |
 | Active-window reading is incomplete | Some apps do not expose their content through Windows accessibility APIs. Choose a display and use **Read screen now** for visual fallback. |
 | npm install fails on a native dependency | Use 64-bit Node.js 22 LTS or newer. If npm specifically requests a C++ toolchain, install Visual Studio Build Tools with **Desktop development with C++**, then retry `npm ci`. |

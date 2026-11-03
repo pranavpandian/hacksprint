@@ -70,3 +70,24 @@ test('Windows UI actions target named safe controls and exact user-provided sear
   assert.equal(validateUiAgentAction({ ...search, elementId: 'e3' }, snapshot, 'Search for Chennai to Jodhpur flights'), null);
   assert.equal(validateUiAgentAction({ ...openHelp, elementId: 'e4' }, snapshot, 'Open the help page'), null);
 });
+
+test('an explicit Google Forms request can submit only the actual Google Forms Submit button', () => {
+  const snapshot = { url: 'https://docs.google.com/forms/d/e/example/viewform', elements: [
+    { id: 'send', name: 'Submit', role: 'Button', password: false },
+    { id: 'other', name: 'Submit', role: 'Button', password: false }
+  ] };
+  const submit = { type: 'invoke', elementId: 'send', reason: 'Submit the filled form' };
+  assert.equal(isSafeAgentGoal('Fill this Google Form and submit it', snapshot), true);
+  assert.deepEqual(validateUiAgentAction(submit, snapshot, 'Fill this Google Form and submit it'), submit);
+  assert.equal(isSafeAgentGoal('Submit this other form', snapshot), false);
+  assert.equal(validateUiAgentAction({ ...submit, elementId: 'send' }, { ...snapshot, url: 'https://example.com/form' }, 'Fill this Google Form and submit it'), null);
+});
+
+test('first-video shortcut selects the first visible YouTube watch link from the active page tree', () => {
+  const { firstVisibleYoutubeVideo } = require('../electron/browser-intents.cjs');
+  const first = { id: 'e1', name: 'Video one', role: 'Hyperlink', value: 'https://www.youtube.com/watch?v=abc123' };
+  const second = { id: 'e2', name: 'Video two', role: 'Hyperlink', value: 'https://www.youtube.com/watch?v=def456' };
+  assert.equal(firstVisibleYoutubeVideo('Open the first video', { windowTitle: 'YouTube - Brave', elements: [first, second] }), first);
+  assert.equal(firstVisibleYoutubeVideo('Open the first video', { windowTitle: 'Search - Brave', elements: [first, second] }), null);
+  assert.equal(firstVisibleYoutubeVideo('Play music', { windowTitle: 'YouTube - Brave', elements: [first, second] }), null);
+});

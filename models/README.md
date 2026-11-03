@@ -24,6 +24,6 @@ models/
 │       └── espeak-ng-data/
 ```
 
-The Windows installer build copies these assets only when they exist in the source tree. The packaged app still expects Ollama to be installed separately, with `qwen2.5:1.5b-instruct` and `hf.co/Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M` pulled into the target Windows account's Ollama model store.
+The Windows installer build copies these assets only when they exist in the source tree. The packaged app still expects Ollama to be installed separately, with `hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M` pulled into the target Windows account's Ollama model store.
 
 ASL video interpretation does not require a separate model file; it uses the local Qwen3-VL 4B Ollama model. This is experimental and not an ASL-trained interpreter. The gesture file is Google's MediaPipe Gesture Recognizer task model, downloaded separately and excluded from Git.
