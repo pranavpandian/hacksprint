@@ -40,6 +40,7 @@
       "voice.css",
       "speech-capture.js",
       "sign-vision.js",
+      "asl-phrases.js",
       "gesture-control.js",
       "!server.py",
       "!browser-extension/**/*",

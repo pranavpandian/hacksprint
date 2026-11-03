@@ -13,11 +13,43 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 - Explicit spoken PC tasks start a one-shot agent automatically, with no display selection when Windows exposes accessible controls. For longer tasks, enable hands-free mode once; each step reads the current browser/app accessibility tree. It asks only for missing form values and can submit a Google Form after an explicit request. Say “stop agent” or press **Stop agent** to interrupt.
 - Voice commands such as “open example.com”, “visit Wikipedia”, or “go to the NASA website” open that site in the default browser. It resolves named sites with web search and supports HTTP/HTTPS links.
 - Spoken web searches for flights, weather, news, and other current information. BridgeUX sends the spoken search query to DuckDuckGo, then summarizes result snippets locally and displays source links. Check provider pages for live prices and availability.
-- A user-started camera view with a compact ASL-trained landmark model for static A–Z and 0–9 handshapes. It spells stable characters, can speak them, and can type the reviewed sequence. J/Z motion and ASL grammar/sentence translation are not supported. Optional MediaPipe hand controls move the pointer, pinch to click, and use a V-sign swipe to scroll; GPU delegate is used when available.
+- A user-started camera view with a compact ASL fingerspelling landmark model for static A–Z and 0–9 handshapes. It can match the spelled sequences `HELLO`, `HOW ARE YOU`, and `THANK YOU` and speak the matching phrase. Those shortcuts match spelled letters; they are not trained ASL phrase translation. J/Z motion and ASL grammar/sentence translation are not supported. Optional MediaPipe hand controls move the pointer, pinch to click, and use a V-sign swipe to scroll; GPU delegate is used when available.
 - Adjustable text size, contrast/theme, spacing, live system captions, and an optional Chrome helper.
 - Windows live captions for computer playback audio, shown in a bottom-of-screen caption bar and the floating controls. Click **Live captions** to start and **Stop** to end; audio is processed on-device. The tiny display video track required by the desktop-audio API stays active at 1 fps during captions; no video frames are stored or passed to the speech model. Captions recognize the selected English or Hindi speech language; they do not translate audio between languages.
 
 See [Privacy](PRIVACY.md), [Security](SECURITY.md), [architecture](docs/ARCHITECTURE.md), and [model details](models/README.md) for limits and implementation notes.
+
+## How to use BridgeUX
+
+### Speak to BridgeUX
+
+1. Finish the required setup by choosing support preferences and English or Hindi.
+2. Choose **Enable microphone** in the welcome prompt, or **Start listening** in the Speak to BridgeUX section.
+3. If Windows blocks the microphone, choose **Open Windows microphone settings** and turn on microphone access for desktop apps. Return to BridgeUX and start listening again.
+4. Speak a request such as “open YouTube”, “read my screen”, or “fill this form”. BridgeUX shows the recognized words, routes screen and browser tasks to the agent, then reads the result aloud. Use **Stop listening** or say “stop listening” to stop microphone capture.
+
+### Turn on live captions
+
+1. Start audio playback in the app you want captioned.
+2. In BridgeUX, select **Start live captions**. Allow the display-audio request if Windows shows it.
+3. Read captions in the BridgeUX window or the floating caption bar. Captions follow the English or Hindi language selected during setup; they do not translate between languages.
+4. Select **Stop captions** to end system-audio capture. If BridgeUX reports no system audio, resume playback and try starting captions again.
+
+### Recognize ASL fingerspelling
+
+1. Open **Recognize basic ASL letters and numbers**, select **Start camera**, then **Start ASL recognition**.
+2. Hold one static letter or digit clearly in view. The letter model runs on-device; MediaPipe uses the GPU hand-tracking delegate when it is available.
+3. Spell `HELLO`, `HOW ARE YOU`, or `THANK YOU` one character at a time. Select **Add space** between words. When a sequence matches one of these shortcuts, BridgeUX shows **Phrase match**.
+4. Select **Read recognized text aloud** to hear the matching phrase (or the raw recognized spelling), and **Clear text** to start over. The feature recognizes fingerspelling; it does not interpret natural ASL signing or sentence grammar.
+
+### Fill a web form
+
+1. Load and connect the BridgeUX browser extension once using the steps below. Open the form page in that browser.
+2. Start BridgeUX voice listening and say **“Fill this form”** or **“Fill this form with my details”**. For a link, say the link in your request or open it first in the browser.
+3. BridgeUX reads visible field labels and asks for each missing value. Say the value exactly as it should appear. It fills only visible, empty, non-password fields; it does not guess personal details or enter passwords.
+4. Review the completed page. BridgeUX leaves ordinary forms unsubmitted. It submits only a Google Form when you explicitly ask it to submit that Google Form.
+
+If the form does not expose labels or accessible fields to the browser, BridgeUX may not be able to identify every field. Keep the form tab active and make sure the extension shows **Connected**.
 
 ## Requirements
 

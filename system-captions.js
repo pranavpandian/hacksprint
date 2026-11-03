@@ -24,7 +24,7 @@
     context = new AudioContext();
     await context.resume();
     stream = await request;
-    if (!stream.getAudioTracks().some(track => track.readyState === 'live')) throw new Error('Windows did not provide a system audio track. Check that audio is playing and try again.');
+    if (!stream.getAudioTracks().some(track => track.readyState === 'live')) throw new Error('Windows did not provide system audio. Play audio in another app, then start captions again.');
     const language = await window.bridgeux.getVoiceLanguage();
     const ready = await window.bridgeux.startSpeech(language, 'captions');
     await context.audioWorklet.addModule('speech-capture.js');
@@ -39,7 +39,11 @@
     running = true;
     setStatus(`Live captions on · ${language === 'hi' ? 'Hindi' : 'English'} · ${ready.model}`);
     await window.bridgeux.updateCaptionOverlay(true, 'Listening to computer audio…');
-    stream.getAudioTracks().forEach(track => track.addEventListener('ended', stop, { once: true }));
+    stream.getAudioTracks().forEach(track => {
+      track.addEventListener('ended', stop, { once: true });
+      track.addEventListener('mute', () => { if (running) setStatus('System audio paused or unavailable. Resume playback to continue captions.'); });
+      track.addEventListener('unmute', () => { if (running) setStatus(`Live captions on · ${language === 'hi' ? 'Hindi' : 'English'}`); });
+    });
     return true;
     } finally { starting = false; }
   }

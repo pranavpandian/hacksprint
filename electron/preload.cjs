@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('bridgeux', Object.freeze({
   modelStatus: () => ipcRenderer.invoke('bridgeux:model-status'),
+  getMicrophoneAccessStatus: () => ipcRenderer.invoke('bridgeux:microphone-status'),
+  openMicrophoneSettings: () => ipcRenderer.invoke('bridgeux:open-microphone-settings'),
   browserBridge: () => ipcRenderer.invoke('bridgeux:browser-bridge'),
   routeAgentTask: request => ipcRenderer.invoke('bridgeux:agent-route', request),
   performBrowserMedia: request => ipcRenderer.invoke('bridgeux:browser-media', request),

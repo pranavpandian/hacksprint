@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, screen, desktopCapturer, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, session, screen, desktopCapturer, shell, systemPreferences } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { randomUUID } = require('node:crypto');
@@ -6,7 +6,7 @@ const { execFile, spawn } = require('node:child_process');
 const { promisify } = require('node:util');
 const { pathToFileURL, fileURLToPath } = require('node:url');
 const { Worker } = require('node:worker_threads');
-const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction } = require('./screen-actions.cjs');
+const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction, validateSpokenFormValue } = require('./screen-actions.cjs');
 const windowsUIA = require('./windows-uia.cjs');
 const gesturePointer = require('./gesture-pointer.cjs');
 const { normalizeWebsiteUrl } = require('./browser-navigation.cjs');
@@ -489,8 +489,7 @@ async function performUiAction(payload) {
   const item = lastUiSnapshot.elements.find(element => element.id === payload.action?.elementId);
   if (!item) throw new Error('That screen control is no longer available. Read the screen again.');
   if (payload.action.type === 'setValue') {
-    const spoken = String(payload.spokenValue || '').trim();
-    if (!spoken || spoken !== String(payload.action.value || '').trim() || spoken.length > 500 || !['Edit', 'ComboBox'].includes(item.role) || item.password) throw new Error('I can only enter the exact value you just said into a visible non-password field.');
+    if (!validateSpokenFormValue(payload, lastUiSnapshot)) throw new Error('I can only enter the exact value you just said into an empty, visible form field.');
   } else if (!validateUiAgentAction(payload.action, lastUiSnapshot, payload.goal)) throw new Error('This screen action is not allowed.');
   if (lastUiSnapshot.source === 'browser') {
     const result = await browserBridge.request('action', { elementId: item.id, action: payload.action });
@@ -591,6 +590,8 @@ async function captureScreen(id) {
 }
 
 ipcMain.handle('bridgeux:model-status', () => modelStatus());
+ipcMain.handle('bridgeux:microphone-status', () => systemPreferences.getMediaAccessStatus('microphone'));
+ipcMain.handle('bridgeux:open-microphone-settings', () => shell.openExternal('ms-settings:privacy-microphone'));
 ipcMain.handle('bridgeux:browser-bridge', () => ({ token: browserBridgeToken, connected: Boolean(browserBridge?.connected), error: browserBridge?.error || '', port: browserBridge?.port || 18765, extensionPath: app.isPackaged ? path.join(process.resourcesPath, 'browser-extension') : path.join(__dirname, '..', 'browser-extension') }));
 ipcMain.handle('bridgeux:ask-local', (_event, payload) => askLocal(payload));
 ipcMain.handle('bridgeux:inspect-screen', (_event, payload) => inspectScreen(payload));

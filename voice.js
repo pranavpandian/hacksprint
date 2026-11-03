@@ -189,7 +189,12 @@
       $('#sendTranscriptToHelper').disabled = false;
       $('#sendTranscriptToScreen').disabled = false;
     } catch (error) {
-      await stopListening(`Could not start listening: ${error.message || 'Check microphone access and local speech model files.'}`);
+      const access = await window.bridgeux.getMicrophoneAccessStatus?.().catch(() => 'unknown');
+      const message = error.name === 'NotAllowedError' || access === 'denied' || access === 'restricted'
+        ? 'Windows blocked microphone access. Turn on microphone access for desktop apps in Windows Settings, then try again.'
+        : `Could not start listening: ${error.message || 'Check microphone access and local speech model files.'}`;
+      $('#openMicrophoneSettings').hidden = access !== 'denied' && access !== 'restricted' && error.name !== 'NotAllowedError';
+      await stopListening(message);
     }
   }
 
@@ -330,14 +335,22 @@
       });
       localStorage.setItem('bridgeux-microphone-permission', 'granted');
       permissionStatus.textContent = 'Microphone approved. BridgeUX is listening now; say “stop listening” at any time.';
+      $('#openMicrophoneSettings').hidden = true;
       dialog.close();
       await startListening();
       playReply(getVoiceLanguage() === 'hi' ? 'नमस्ते। बताइए, आपको किस चीज़ में मदद चाहिए।' : 'Hello. Tell me what you need, and I will answer out loud.', getVoiceLanguage());
     } catch (error) {
-      permissionStatus.textContent = error.name === 'NotAllowedError' ? 'Microphone permission was denied. You can continue without voice.' : error.message;
+      const access = await window.bridgeux.getMicrophoneAccessStatus?.().catch(() => 'unknown');
+      permissionStatus.textContent = error.name === 'NotAllowedError' || access === 'denied' || access === 'restricted'
+        ? 'Windows blocked microphone access. Turn on microphone access for desktop apps in Windows Settings, then try again.'
+        : error.message;
+      $('#openMicrophoneSettings').hidden = access !== 'denied' && access !== 'restricted' && error.name !== 'NotAllowedError';
       button.disabled = false;
     }
   };
+  $('#openMicrophoneSettings').onclick = () => window.bridgeux.openMicrophoneSettings().catch(error => {
+    permissionStatus.textContent = `Could not open Windows microphone settings: ${error.message}`;
+  });
 
   $('#talkToMe').onclick = () => playReply(getVoiceLanguage() === 'hi' ? 'ब्रिज यूएक्स में आपका स्वागत है। बताइए, आपको किस चीज़ में मदद चाहिए।' : 'Welcome to BridgeUX. Tell me what you need; I will listen and reply aloud.');
   $('#startSpeech').onclick = () => startListening();

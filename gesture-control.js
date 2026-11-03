@@ -76,7 +76,8 @@ import * as ort from './node_modules/onnxruntime-web/dist/ort.wasm.min.mjs';
       lastAslCharacter = label;
       const result = $('#aslLiveResult');
       result.dataset.text = `${result.dataset.text || ''}${label}`;
-      result.textContent = `Detected: ${label} · ${(confidence * 100).toFixed(0)}% confidence\nSpelled: ${result.dataset.text}`;
+      const phrase = window.bridgeuxResolveAslPhrase?.(result.dataset.text);
+      result.textContent = `Detected: ${label} · ${(confidence * 100).toFixed(0)}% confidence\nFingerspelled: ${result.dataset.text}${phrase ? `\nPhrase match: ${phrase}` : ''}`;
       $('#speakAslText').disabled = false;
       $('#typeSignText').disabled = false;
       if ($('#aslVoiceOn').checked) {
@@ -107,8 +108,8 @@ import * as ort from './node_modules/onnxruntime-web/dist/ort.wasm.min.mjs';
   };
   $('#stopAslRecognition').onclick = () => { aslActive = false; $('#stopAslRecognition').disabled = true; $('#startAslRecognition').disabled = !video.srcObject; };
   $('#clearAslText').onclick = () => { $('#aslLiveResult').dataset.text = ''; $('#aslLiveResult').textContent = 'Your recognized letters and numbers will appear here.'; $('#speakAslText').disabled = true; $('#typeSignText').disabled = true; lastAslCharacter = ''; aslVotes = []; };
-  $('#speakAslText').onclick = () => { const text = $('#aslLiveResult').dataset.text || ''; if (text) { const language = JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}').interfaceLanguage || 'English'; window.bridgeuxSpeak?.(text, language === 'हिन्दी' ? 'hi' : 'en'); } };
-  $('#addAslSpace').onclick = () => { const result = $('#aslLiveResult'); result.dataset.text = `${result.dataset.text || ''} `; result.textContent = `Spelled: ${result.dataset.text}`; lastAslCharacter = ''; aslVotes = []; };
+  $('#speakAslText').onclick = () => { const text = $('#aslLiveResult').dataset.text || ''; if (text) { const language = JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}').interfaceLanguage || 'English'; window.bridgeuxSpeak?.(window.bridgeuxResolveAslPhrase?.(text) || text, language === 'हिन्दी' ? 'hi' : 'en'); } };
+  $('#addAslSpace').onclick = () => { const result = $('#aslLiveResult'); result.dataset.text = `${result.dataset.text || ''} `; const phrase = window.bridgeuxResolveAslPhrase?.(result.dataset.text); result.textContent = `Fingerspelled: ${result.dataset.text}${phrase ? `\nPhrase match: ${phrase}` : ''}`; lastAslCharacter = ''; aslVotes = []; };
   $('#typeSignText').onclick = async () => {
     const text = $('#aslLiveResult').dataset.text || '';
     if (!text || !window.confirm(`Type these recognized characters into the focused field?\n\n${text}`)) return;

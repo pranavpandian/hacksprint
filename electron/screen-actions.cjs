@@ -88,4 +88,17 @@ function validateUiAgentAction(action, snapshot, goal) {
   return null;
 }
 
-module.exports = { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, isGoogleFormSubmitGoal, validateAgentAction, validateUiAgentAction };
+function validateSpokenFormValue(payload, snapshot) {
+  const goal = payload?.goal;
+  const action = payload?.action;
+  const spoken = String(payload?.spokenValue || '').trim();
+  const value = String(action?.value || '').trim();
+  const element = snapshot?.elements?.find(item => item.id === action?.elementId);
+  return typeof goal === 'string' && /\b(?:fill|complete|answer|enter)\b/i.test(goal) &&
+    action?.type === 'setValue' && spoken.length > 0 && spoken === value && spoken.length <= 500 &&
+    element && ['Edit', 'ComboBox'].includes(element.role) && !element.password &&
+    !String(element.value || '').trim() &&
+    (!element.inputType || ['text', 'email', 'tel', 'url', 'number', 'date', 'time', ''].includes(element.inputType));
+}
+
+module.exports = { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, isGoogleFormSubmitGoal, validateAgentAction, validateUiAgentAction, validateSpokenFormValue };

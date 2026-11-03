@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction } = require('../electron/screen-actions.cjs');
+const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction, validateSpokenFormValue } = require('../electron/screen-actions.cjs');
 
 const screen = { width: 1280, height: 720 };
 
@@ -81,6 +81,19 @@ test('an explicit Google Forms request can submit only the actual Google Forms S
   assert.deepEqual(validateUiAgentAction(submit, snapshot, 'Fill this Google Form and submit it'), submit);
   assert.equal(isSafeAgentGoal('Submit this other form', snapshot), false);
   assert.equal(validateUiAgentAction({ ...submit, elementId: 'send' }, { ...snapshot, url: 'https://example.com/form' }, 'Fill this Google Form and submit it'), null);
+});
+
+test('form filling accepts only the exact spoken value for an empty visible non-password field', () => {
+  const snapshot = { elements: [
+    { id: 'name', name: 'Full name', role: 'Edit', value: '', password: false, inputType: 'text' },
+    { id: 'existing', name: 'Email', role: 'Edit', value: 'already@example.com', password: false, inputType: 'email' },
+    { id: 'password', name: 'Password', role: 'Edit', value: '', password: true, inputType: 'password' }
+  ] };
+  const payload = { goal: 'Fill out this form', action: { type: 'setValue', elementId: 'name', value: 'Ada Lovelace' }, spokenValue: 'Ada Lovelace' };
+  assert.equal(validateSpokenFormValue(payload, snapshot), true);
+  assert.equal(validateSpokenFormValue({ ...payload, spokenValue: 'Ada' }, snapshot), false);
+  assert.equal(validateSpokenFormValue({ ...payload, action: { ...payload.action, elementId: 'existing' } }, snapshot), false);
+  assert.equal(validateSpokenFormValue({ ...payload, action: { ...payload.action, elementId: 'password' } }, snapshot), false);
 });
 
 test('first-video shortcut selects the first visible YouTube watch link from the active page tree', () => {
