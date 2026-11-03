@@ -4,7 +4,7 @@ BridgeUX stores accessibility preferences in Electron's local browser storage on
 
 ## Microphone and speech
 
-On first launch, BridgeUX asks whether the user wants voice support. It requests microphone permission only after the user selects **Enable microphone**. If allowed, live listening starts for that session; BridgeUX does not silently restart the microphone on later launches. The app remembers that the welcome prompt was shown. The user can start or stop listening at any time. Audio is streamed to the local Nemotron speech-recognition model through the app's audio worker. BridgeUX does not write microphone recordings to disk or send audio to a cloud speech service. Reply audio is generated on-device by the local Piper voice model.
+On first launch, BridgeUX requires the user to choose at least one accessibility support and a preferred English or Hindi language. It then asks whether to use voice. Microphone permission is requested only after the user selects **Enable microphone**. If allowed, live listening starts for that session; BridgeUX does not silently restart the microphone on later launches. The user can start or stop listening at any time. Audio is streamed to the local Nemotron speech-recognition model in the selected language. BridgeUX does not write microphone recordings to disk or send audio to a cloud speech service. Reply audio is generated on-device by the local Piper voice model.
 
 ## Screen sharing
 

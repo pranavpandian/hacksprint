@@ -22,7 +22,8 @@ parentPort.on('message', message => {
   try {
     if (message.type === 'start') {
       stream = recognizer.createStream();
-      // Leave the per-stream language unset: Nemotron uses that to detect it automatically.
+      const language = message.language === 'hi' ? 'hi' : 'en';
+      stream.setOption('language', language);
       lastText = '';
       return;
     }

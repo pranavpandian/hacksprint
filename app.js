@@ -1,2 +1,153 @@
-(()=>{'use strict';const $=s=>document.querySelector(s);const announce=t=>{$('#liveRegion').textContent=t};const supports=['blind','lowVision','deaf','hardOfHearing','sign','language','plain'];let prefs={supports:[],interfaceLanguage:'English',captionLanguage:'English',textSize:100,theme:'light',spacious:false,reduceMotion:false};try{prefs={...prefs,...JSON.parse(localStorage.getItem('bridgeux-preferences')||'{}')}}catch{}function save(){localStorage.setItem('bridgeux-preferences',JSON.stringify(prefs))}function apply(){document.body.classList.remove('dark','contrast','spacious');if(prefs.theme!=='light')document.body.classList.add(prefs.theme);if(prefs.spacious)document.body.classList.add('spacious');document.documentElement.style.fontSize=prefs.textSize+'%';$('#textSize').value=prefs.textSize;$('#sizeValue').textContent=prefs.textSize+'%';$('#theme').value=prefs.theme;$('#spacious').checked=prefs.spacious;$('#reduceMotion').checked=prefs.reduceMotion;$('#interfaceLanguage').value=prefs.interfaceLanguage;$('#captionLanguage').value=prefs.captionLanguage;document.querySelectorAll('[name=support]').forEach(x=>x.checked=prefs.supports.includes(x.value));document.documentElement.style.scrollBehavior=prefs.reduceMotion?'auto':''}apply();$('#setupForm').addEventListener('submit',e=>{e.preventDefault();prefs.supports=[...document.querySelectorAll('[name=support]:checked')].map(x=>x.value);prefs.interfaceLanguage=$('#interfaceLanguage').value;prefs.captionLanguage=$('#captionLanguage').value;save();$('#setupStatus').textContent='Your choices are saved on this device.';announce('Your accessibility choices are saved.')});$('#skipSetup').onclick=()=>{document.querySelector('#screenHelper').scrollIntoView();announce('Setup skipped. You can change choices in settings.')};$('#textSize').oninput=e=>{prefs.textSize=Number(e.target.value);apply();save()};$('#theme').onchange=e=>{prefs.theme=e.target.value;apply();save()};$('#spacious').onchange=e=>{prefs.spacious=e.target.checked;apply();save()};$('#reduceMotion').onchange=e=>{prefs.reduceMotion=e.target.checked;apply();save()};function speak(t){if(!('speechSynthesis'in window)){announce('Speech synthesis is unavailable in this browser.');return}speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t))}$('#readPage').onclick=()=>speak('BridgeUX. Technology that meets you where you are. Choose supports that work for you. Choose the support you want, then use the local helper or screen tools below.');$('#readTip').onclick=()=>speak('BridgeUX can read instructions aloud, listen to Hindi or English, and help explain selected screen content.');$('#plainToggle').onclick=()=>{$('#plainResult').hidden=!$('#plainResult').hidden;$('#plainToggle').textContent=$('#plainResult').hidden?'Simplify instructions':'Hide simpler instructions'};let capTimer=null,capSec=0,capPaused=false;const phrases=['Welcome. This is a sample caption.','You can read along without audio.','Live captions are not configured in this demo.'];function captionTick(){if(capPaused)return;capSec++;$('#captionClock').textContent=`00:${String(capSec%60).padStart(2,'0')}`;if(capSec%4===0){const i=(capSec/4-1)%phrases.length;$('#captionText').textContent=phrases[i];announce('New sample caption: '+phrases[i])}}$('#startCaption').onclick=()=>{if(capTimer)return;capPaused=false;$('#startCaption').disabled=true;$('#pauseCaption').disabled=false;$('#pauseCaption').textContent='Pause';$('#captionText').textContent=phrases[0];announce('Sample captions started. Microphone is not active.');capTimer=setInterval(captionTick,1000)};$('#pauseCaption').onclick=()=>{capPaused=!capPaused;$('#pauseCaption').textContent=capPaused?'Resume':'Pause';announce(capPaused?'Captions paused.':'Captions resumed.')};$('#clearCaption').onclick=()=>{clearInterval(capTimer);capTimer=null;capPaused=false;capSec=0;$('#captionClock').textContent='00:00';$('#captionText').textContent='Captions will appear here when you start the sample.';$('#startCaption').disabled=false;$('#pauseCaption').disabled=true;announce('Sample captions cleared and stopped.')};
-$('#resetSettings').onclick=()=>{localStorage.removeItem('bridgeux-preferences');prefs={supports:[],interfaceLanguage:'English',captionLanguage:'English',textSize:100,theme:'light',spacious:false,reduceMotion:false};apply();$('#setupStatus').textContent='Preferences reset on this device.';$('#privacyStatus').textContent='Local preferences cleared.';announce('Preferences reset.')};$('#auditButton').onclick=()=>{const missing=[...document.querySelectorAll('button,input,select,textarea')].filter(x=>!x.closest('.sr-only')&&!x.getAttribute('aria-label')&&!x.labels?.length&&!(x.textContent||'').trim()).length;const images=document.querySelectorAll('img:not([alt])').length;$('#auditResult').textContent=`Basic local checks: ${missing} unlabeled controls, ${images} images without alt text. This lightweight check is not axe-core and does not assess WCAG conformance.`;announce('Page check complete. '+missing+' unlabeled controls and '+images+' images without alternative text found. This is not an axe-core audit.')} })();
+(() => {
+  'use strict';
+
+  const $ = selector => document.querySelector(selector);
+  const announce = text => { $('#liveRegion').textContent = text; };
+  let prefs = { supports: [], interfaceLanguage: 'English', textSize: 100, theme: 'light', spacious: false, reduceMotion: false };
+  try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}') }; } catch {}
+
+  function save() { localStorage.setItem('bridgeux-preferences', JSON.stringify(prefs)); }
+  function apply() {
+    document.body.classList.remove('dark', 'contrast', 'spacious');
+    if (prefs.theme !== 'light') document.body.classList.add(prefs.theme);
+    if (prefs.spacious) document.body.classList.add('spacious');
+    document.documentElement.style.fontSize = `${prefs.textSize}%`;
+    $('#textSize').value = prefs.textSize;
+    $('#sizeValue').textContent = `${prefs.textSize}%`;
+    $('#theme').value = prefs.theme;
+    $('#spacious').checked = prefs.spacious;
+    $('#reduceMotion').checked = prefs.reduceMotion;
+    document.documentElement.style.scrollBehavior = prefs.reduceMotion ? 'auto' : '';
+    $('#interfaceLanguage').value = prefs.interfaceLanguage;
+    document.querySelectorAll('#setupForm [name=support]').forEach(input => { input.checked = prefs.supports.includes(input.value); });
+  }
+  apply();
+
+  const gate = $('#setupGate');
+  const gateSupports = [...document.querySelectorAll('[name=setupSupport]')];
+  if (!prefs.setupComplete) gate.showModal();
+  gate.addEventListener('cancel', event => { if (!prefs.setupComplete) event.preventDefault(); });
+  $('#setupNext').onclick = () => {
+    if (!gateSupports.some(input => input.checked)) {
+      $('#setupGateError').textContent = 'Choose at least one support to continue.';
+      gateSupports[0].focus();
+      return;
+    }
+    $('#setupStepLabel').textContent = 'STEP 2 OF 2';
+    $('#setupGateTitle').textContent = 'What language should BridgeUX use?';
+    $('#setupGateHint').hidden = true;
+    $('#setupGateSupports').hidden = true;
+    $('#setupGateError').textContent = '';
+    $('#setupLanguageStep').hidden = false;
+    $('#setupNext').hidden = true;
+    $('#setupBack').hidden = false;
+    $('#setupFinish').hidden = false;
+    $('#setupLanguage').focus();
+  };
+  $('#setupBack').onclick = () => {
+    $('#setupStepLabel').textContent = 'STEP 1 OF 2';
+    $('#setupGateTitle').textContent = 'What support would help you?';
+    $('#setupGateHint').hidden = false;
+    $('#setupGateSupports').hidden = false;
+    $('#setupLanguageStep').hidden = true;
+    $('#setupNext').hidden = false;
+    $('#setupBack').hidden = true;
+    $('#setupFinish').hidden = true;
+  };
+  $('#setupFinish').onclick = () => {
+    const language = $('#setupLanguage').value;
+    if (!language) {
+      $('#setupGateError').textContent = 'Choose English or Hindi to continue.';
+      $('#setupLanguage').focus();
+      return;
+    }
+    prefs.supports = gateSupports.filter(input => input.checked).map(input => input.value);
+    prefs.interfaceLanguage = language;
+    prefs.setupComplete = true;
+    localStorage.setItem('bridgeux-last-voice-language', language === 'हिन्दी' ? 'hi' : 'en');
+    document.querySelectorAll('#setupForm [name=support]').forEach(input => { input.checked = prefs.supports.includes(input.value); });
+    $('#interfaceLanguage').value = language;
+    save();
+    apply();
+    gate.close();
+    announce(`Setup saved. BridgeUX will listen and reply in ${language === 'हिन्दी' ? 'Hindi' : 'English'}.`);
+    window.dispatchEvent(new Event('bridgeux:setup-complete'));
+  };
+
+  $('#setupForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const selected = [...document.querySelectorAll('#setupForm [name=support]:checked')].map(input => input.value);
+    if (!selected.length) {
+      $('#setupStatus').textContent = 'Choose at least one support.';
+      return;
+    }
+    prefs.supports = selected;
+    prefs.interfaceLanguage = $('#interfaceLanguage').value;
+    localStorage.setItem('bridgeux-last-voice-language', prefs.interfaceLanguage === 'हिन्दी' ? 'hi' : 'en');
+    save();
+    $('#setupStatus').textContent = 'Your choices are saved on this device.';
+    announce('Your accessibility choices are saved.');
+    window.dispatchEvent(new Event('bridgeux:preferences-changed'));
+  });
+  $('#skipSetup').onclick = () => $('#onboarding').scrollIntoView();
+  $('#textSize').oninput = event => { prefs.textSize = Number(event.target.value); apply(); save(); };
+  $('#theme').onchange = event => { prefs.theme = event.target.value; apply(); save(); };
+  $('#spacious').onchange = event => { prefs.spacious = event.target.checked; apply(); save(); };
+  $('#reduceMotion').onchange = event => { prefs.reduceMotion = event.target.checked; apply(); save(); };
+
+  function speak(text) {
+    if (!('speechSynthesis' in window)) { announce('Speech synthesis is unavailable in this browser.'); return; }
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = prefs.interfaceLanguage === 'हिन्दी' ? 'hi-IN' : 'en-US';
+    speechSynthesis.speak(utterance);
+  }
+  $('#readPage').onclick = () => speak(prefs.interfaceLanguage === 'हिन्दी' ? 'ब्रिज यूएक्स में आपका स्वागत है। यहां आप स्क्रीन समझने, पढ़ने और स्थानीय सहायता पाने के विकल्प चुन सकते हैं।' : 'BridgeUX. Technology that meets you where you are. Choose supports that work for you, then use the local helper or screen tools below.');
+  $('#readTip').onclick = () => speak(prefs.interfaceLanguage === 'हिन्दी' ? 'ब्रिज यूएक्स निर्देश पढ़ सकता है, आपकी चुनी हुई भाषा सुन सकता है और स्क्रीन समझने में मदद कर सकता है।' : 'BridgeUX can read instructions aloud, listen in your selected language, and help explain selected screen content.');
+  $('#onboardingSpeak').onclick = () => speak(prefs.interfaceLanguage === 'हिन्दी' ? 'जो सहायता आपके लिए उपयोगी हो, उसे चुनें। आपकी सहायता और भाषा की पसंद से ब्रिज यूएक्स अपनी मदद तय करता है।' : 'Choose any supports that feel useful. Your support and language choices help BridgeUX listen and reply in the language you selected.');
+  $('#plainToggle').onclick = () => { $('#plainResult').hidden = !$('#plainResult').hidden; $('#plainToggle').textContent = $('#plainResult').hidden ? 'Simplify instructions' : 'Hide simpler instructions'; };
+
+  let capTimer = null, capSec = 0, capPaused = false;
+  const phrases = ['Welcome. This is a sample caption.', 'You can read along without audio.', 'Live captions are not configured in this demo.'];
+  function captionTick() {
+    if (capPaused) return;
+    capSec++;
+    $('#captionClock').textContent = `00:${String(capSec % 60).padStart(2, '0')}`;
+    if (capSec % 4 === 0) { const phrase = phrases[(capSec / 4 - 1) % phrases.length]; $('#captionText').textContent = phrase; announce(`New sample caption: ${phrase}`); }
+  }
+  $('#startCaption').onclick = () => {
+    if (capTimer) return;
+    capPaused = false;
+    $('#startCaption').disabled = true;
+    $('#pauseCaption').disabled = false;
+    $('#pauseCaption').textContent = 'Pause';
+    $('#captionText').textContent = phrases[0];
+    announce('Sample captions started. Microphone is not active.');
+    capTimer = setInterval(captionTick, 1000);
+  };
+  $('#pauseCaption').onclick = () => { capPaused = !capPaused; $('#pauseCaption').textContent = capPaused ? 'Resume' : 'Pause'; announce(capPaused ? 'Captions paused.' : 'Captions resumed.'); };
+  $('#clearCaption').onclick = () => {
+    clearInterval(capTimer); capTimer = null; capPaused = false; capSec = 0;
+    $('#captionClock').textContent = '00:00';
+    $('#captionText').textContent = 'Captions will appear here when you start the sample.';
+    $('#startCaption').disabled = false; $('#pauseCaption').disabled = true;
+    announce('Sample captions cleared and stopped.');
+  };
+  $('#resetSettings').onclick = () => {
+    localStorage.removeItem('bridgeux-preferences');
+    prefs = { supports: [], interfaceLanguage: 'English', textSize: 100, theme: 'light', spacious: false, reduceMotion: false };
+    apply(); $('#setupStatus').textContent = 'Preferences reset on this device.';
+    $('#privacyStatus').textContent = 'Local preferences cleared.'; announce('Preferences reset.');
+    gateSupports.forEach(input => { input.checked = false; });
+    $('#setupLanguage').value = '';
+    $('#setupBack').click();
+    $('#setupGateError').textContent = '';
+    gate.showModal();
+  };
+  $('#auditButton').onclick = () => {
+    const missing = [...document.querySelectorAll('button,input,select,textarea')].filter(input => !input.closest('.sr-only') && !input.getAttribute('aria-label') && !input.labels?.length && !(input.textContent || '').trim()).length;
+    const images = document.querySelectorAll('img:not([alt])').length;
+    $('#auditResult').textContent = `Basic local checks: ${missing} unlabeled controls, ${images} images without alt text. This lightweight check is not axe-core and does not assess WCAG conformance.`;
+    announce(`Page check complete. ${missing} unlabeled controls and ${images} images without alternative text found. This is not an axe-core audit.`);
+  };
+})();

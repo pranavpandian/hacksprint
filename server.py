@@ -8,8 +8,16 @@ import json
 ROOT = Path(__file__).resolve().parent
 MODEL = "qwen2.5:1.5b-instruct"
 
-def local_fallback(task, text):
+def local_fallback(task, text, language="English"):
     text = text.strip()
+    if language == "हिन्दी":
+        if not text:
+            return "थोड़ा संदर्भ लिखें, फिर मैं मदद करने की कोशिश करूंगा।"
+        if task == "steps":
+            return "1. सवाल ध्यान से पढ़ें।\n2. मांगी गई जानकारी जुटाएं।\n3. अपने शब्दों में छोटा जवाब लिखें।\n4. आगे बढ़ने से पहले उसे जांचें। केवल सही जानकारी दें।"
+        if task == "simplify":
+            return "सरल शब्दों में: " + text + "\n\nयह सीमित ऑफ़लाइन सहायता है। मूल निर्देश से मिलाकर जांचें।"
+        return "स्थानीय AI मॉडल अभी उपलब्ध नहीं है। निजी तथ्य न गढ़ें; अपनी जानकारी खुद जांचें।"
     if not text:
         return "Add a little context first, then I can help you work through it."
     if task == "steps":
@@ -34,10 +42,11 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("Keep the request under 12 KB.")
             body = json.loads(self.rfile.read(size))
             task, text = body.get("task", "help"), body.get("text", "")
-            if task not in {"help", "simplify", "explain", "steps"} or not isinstance(text, str):
+            language = body.get("language", "English")
+            if task not in {"help", "simplify", "explain", "steps"} or not isinstance(text, str) or language not in {"English", "हिन्दी"}:
                 raise ValueError("Invalid task or text.")
             text = text[:8000]
-            prompt = ("You are BridgeUX, a careful local accessibility assistant. Help the user understand a form or draft an answer. Never invent personal facts, eligibility rules, deadlines, or requirements. Keep the original meaning. Clearly say when you are unsure. The user must review and choose any answer.\nTask: " + task + "\nUser text: " + text)
+            prompt = ("You are BridgeUX, a careful local accessibility assistant. Reply in " + ("Hindi" if language == "हिन्दी" else "English") + ". Help the user understand a form or draft an answer. Never invent personal facts, eligibility rules, deadlines, or requirements. Keep the original meaning. Clearly say when you are unsure. The user must review and choose any answer.\nTask: " + task + "\nUser text: " + text)
             req = Request("http://127.0.0.1:11434/api/generate", data=json.dumps({"model": MODEL, "prompt": prompt, "stream": False, "options": {"temperature": 0.2}}).encode(), headers={"Content-Type": "application/json"}, method="POST")
             with urlopen(req, timeout=70) as resp:
                 result = json.loads(resp.read())
@@ -47,7 +56,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.reply({"answer": answer, "source": "local Ollama · " + MODEL})
         except (URLError, TimeoutError, HTTPError, json.JSONDecodeError, ValueError, OSError) as exc:
             why = "Qwen2.5 is not available from local Ollama yet. Showing a basic offline helper instead."
-            self.reply({"answer": local_fallback(task if 'task' in locals() else "help", text if 'text' in locals() else ""), "source": why})
+            self.reply({"answer": local_fallback(task if 'task' in locals() else "help", text if 'text' in locals() else "", language if 'language' in locals() else "English"), "source": why})
 
     def do_GET(self):
         if self.path == "/local-status":

@@ -26,8 +26,9 @@
   let micResumeInFlight = false;
   const activeAudioNodes = new Set();
 
-  function getVoiceLanguage(text) {
-    return /[\u0900-\u097F]/.test(text) ? 'hi' : 'en';
+  function getVoiceLanguage() {
+    try { return JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}').interfaceLanguage === 'हिन्दी' ? 'hi' : 'en'; }
+    catch { return 'en'; }
   }
 
   function setListening(active) {
@@ -53,7 +54,7 @@
     micPausedForReply = false;
     micResumeInFlight = true;
     try {
-      await window.bridgeux.startSpeech();
+      await window.bridgeux.startSpeech(getVoiceLanguage());
       if (stream && inputContext?.state === 'suspended') await inputContext.resume();
       if (stream) speechStatus.textContent = 'Listening and replying locally.';
     } catch (error) {
@@ -64,7 +65,7 @@
     }
   }
 
-  async function playReply(text, language = getVoiceLanguage(text)) {
+  async function playReply(text, language = getVoiceLanguage()) {
     if (!text || !window.bridgeux?.speakText) return;
 
     activeTtsId += 1;
@@ -93,7 +94,7 @@
     }
   }
 
-  window.bridgeuxSpeak = (text, language = getVoiceLanguage(text)) => playReply(text, language);
+  window.bridgeuxSpeak = (text, language = getVoiceLanguage()) => playReply(text, language);
 
   async function stopListening(message = 'Microphone stopped.') {
     try {
@@ -125,7 +126,8 @@
     setListening(true);
     speechStatus.textContent = 'Starting local Hindi/English recognition…';
     try {
-      const ready = await window.bridgeux.startSpeech();
+      const language = getVoiceLanguage();
+      const ready = await window.bridgeux.startSpeech(language);
       stream = stream || await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -144,7 +146,7 @@
       source.connect(worklet);
       finalText = '';
       partialText = '';
-      transcript.textContent = 'Listening… speak in Hindi or English.';
+      transcript.textContent = language === 'hi' ? 'सुन रहा हूँ… हिन्दी में बोलें।' : 'Listening… speak in English.';
       $('#speakTranscript').disabled = false;
       $('#sendTranscriptToHelper').disabled = false;
       $('#sendTranscriptToScreen').disabled = false;
@@ -193,14 +195,16 @@
     $('#assistant').scrollIntoView({ behavior: 'smooth' });
     speechStatus.textContent = 'The local assistant is working; you can keep speaking.';
     try {
-      const result = await window.bridgeux.askLocal({ task: $('#assistTask').value || 'help', text });
+      const preferences = JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}');
+      const language = getVoiceLanguage() === 'hi' ? 'हिन्दी' : 'English';
+      const result = await window.bridgeux.askLocal({ task: $('#assistTask').value || 'help', text, language, supports: preferences.supports || [] });
       answer.textContent = `${result.answer}\n\n${result.source}`;
     } catch {
       answer.textContent = 'I could not reach the local assistant. Check that Ollama is running and that Qwen is installed.';
     }
   }
 
-  if (localStorage.getItem('bridgeux-voice-prompted') !== 'yes') dialog.showModal();
+  window.addEventListener('bridgeux:setup-complete', () => dialog.showModal());
   $('#voiceSetup').onclick = () => dialog.showModal();
   dialog.addEventListener('close', () => localStorage.setItem('bridgeux-voice-prompted', 'yes'));
 
@@ -222,16 +226,21 @@
       permissionStatus.textContent = 'Microphone approved. BridgeUX is listening now; say “stop listening” at any time.';
       dialog.close();
       await startListening();
-      playReply('Hello. I can listen in Hindi or English. Tell me what you need, and I will answer out loud.', 'en');
+      playReply(getVoiceLanguage() === 'hi' ? 'नमस्ते। बताइए, आपको किस चीज़ में मदद चाहिए।' : 'Hello. Tell me what you need, and I will answer out loud.', getVoiceLanguage());
     } catch (error) {
       permissionStatus.textContent = error.name === 'NotAllowedError' ? 'Microphone permission was denied. You can continue without voice.' : error.message;
       button.disabled = false;
     }
   };
 
-  $('#talkToMe').onclick = () => playReply('Welcome to BridgeUX. You can speak in Hindi or English. Tell me what you need; I will listen and reply aloud.');
+  $('#talkToMe').onclick = () => playReply(getVoiceLanguage() === 'hi' ? 'ब्रिज यूएक्स में आपका स्वागत है। बताइए, आपको किस चीज़ में मदद चाहिए।' : 'Welcome to BridgeUX. Tell me what you need; I will listen and reply aloud.');
   $('#startSpeech').onclick = () => startListening();
   $('#stopSpeech').onclick = () => stopListening();
+  window.addEventListener('bridgeux:preferences-changed', async () => {
+    if (!stream || $('#stopSpeech').disabled) return;
+    await stopListening('Restarting speech with your updated language…');
+    await startListening();
+  });
 
   window.bridgeux.onSpeechResult(result => {
     if (result.type === 'error') {
@@ -244,7 +253,7 @@
     if (result.final) {
       finalText = [finalText, text].filter(Boolean).join(' ');
       partialText = '';
-      const language = getVoiceLanguage(text);
+      const language = getVoiceLanguage();
       replyLanguage = language;
       localStorage.setItem('bridgeux-last-voice-language', language);
       speechStatus.textContent = `Heard ${language === 'hi' ? 'Hindi' : 'English'} · working locally…`;
@@ -300,11 +309,11 @@
   };
   $('#sendTranscriptToHelper').onclick = () => {
     const text = [finalText, partialText].filter(Boolean).join(' ');
-    if (text) handleVoiceRequest(text, getVoiceLanguage(text));
+    if (text) handleVoiceRequest(text, getVoiceLanguage());
   };
   $('#sendTranscriptToScreen').onclick = () => {
     const text = [finalText, partialText].filter(Boolean).join(' ');
-    if (text) handleVoiceRequest(`Read my screen and help with this: ${text}`, getVoiceLanguage(text));
+    if (text) handleVoiceRequest(`Read my screen and help with this: ${text}`, getVoiceLanguage());
   };
 
   new MutationObserver(() => {
@@ -312,7 +321,7 @@
     if (!answer.hidden && answer.textContent.trim() && !answer.textContent.startsWith('Working on')) {
       replyText = answer.textContent.split('\n\n')[0];
       if (localStorage.getItem('bridgeux-microphone-permission') === 'granted') {
-        playReply(replyText, getVoiceLanguage(replyText));
+        playReply(replyText, getVoiceLanguage());
       }
     }
   }).observe($('#assistAnswer'), { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });

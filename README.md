@@ -6,7 +6,7 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 
 ## What it includes
 
-- Streaming Hindi/English speech-to-text using the local NVIDIA Nemotron 3.5 model through sherpa-onnx. The language is auto-detected by the model.
+- Streaming English or Hindi speech-to-text using the local NVIDIA Nemotron 3.5 model through sherpa-onnx. First launch requires the user to choose accessibility supports and a preferred language; speech recognition and replies then use that choice.
 - Local English and Hindi Piper neural voices for replies and read-aloud.
 - A local Qwen assistant for spoken/text help and Qwen vision model for selected screen captures, both served by Ollama.
 - User-started screen capture and live screen help. The live helper samples the selected display periodically and speaks summaries when requested.
@@ -50,7 +50,7 @@ These are practical recommendations, not a hardware compatibility guarantee. Per
    ollama pull qwen3-vl:2b
    ```
 
-5. Start BridgeUX. Allow microphone permission only if you want to use speech. Select a display and start screen help when you want screen content analyzed. Camera permission is only needed for the experimental ASL demo.
+5. Start BridgeUX and complete the required support and preferred-language setup. Choose whether to enable the microphone when prompted; speech follows the selected English or Hindi language. Select a display to analyze screen content. Camera permission is only needed for the experimental ASL demo.
 
 If the repository has no published GitHub Release yet, use Option B to build the app, or ask the project maintainer for the installer.
 
