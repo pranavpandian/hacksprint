@@ -6,7 +6,7 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 
 ## What it includes
 
-- Streaming English or Hindi speech-to-text through sherpa-onnx. English uses a compact int8 Zipformer model; Hindi uses the local NVIDIA Nemotron 3.5 streaming model. First launch requires the user to choose accessibility supports and a preferred language.
+- Streaming English or Hindi speech-to-text through the local sherpa-onnx Nemotron 3.5 model. First launch requires the user to choose accessibility supports and a preferred language.
 - Local English and Hindi Piper neural voices for replies and read-aloud.
 - One Hugging Face Qwen3.5 4B model for the local assistant, screen vision, and experimental ASL clips, served by Ollama.
 - A local OpenClaw-style agent loop. Pair the included Chrome/Brave extension once to read and act on the active tab DOM; Windows UI Automation controls other desktop apps. Screenshots are only the fallback for visual-only apps.
@@ -99,17 +99,7 @@ Move-Item 'models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06
 
 The folder must contain `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, and `tokens.txt` directly inside it. This build runs speech recognition on CPU.
 
-For English, also download the smaller 20M streaming Zipformer package. It is used for both voice requests and captions when available; the Hindi voice and captions continue to use Nemotron. The Zipformer model supports English only. The captions match recognized speech to the chosen language; they do not translate foreign-language audio.
-
-```powershell
-$zipformerArchive = Join-Path $env:TEMP 'bridgeux-zipformer-en.tar.bz2'
-Invoke-WebRequest 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2' -OutFile $zipformerArchive
-tar -xjf $zipformerArchive -C models
-New-Item -ItemType Directory -Force 'models/asr-zipformer-en' | Out-Null
-Move-Item 'models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17' 'models/asr-zipformer-en/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17'
-```
-
-Keep the extracted `sherpa-onnx-streaming-zipformer-en-20M-2023-02-17` folder under `models/asr-zipformer-en/`. The installer includes only its model files and tokens, not the sample audio files.
+The same multilingual Nemotron model is used for both voice requests and captions, with its language set to English or Hindi from the user's preference. It runs locally on the CPU. Captions transcribe speech in the selected language; they do not translate other languages.
 
 ### 2. English and Hindi neural voices
 

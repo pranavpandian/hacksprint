@@ -48,9 +48,6 @@ let preferredVoiceLanguage = 'en';
 const speechModelDir = app.isPackaged
   ? path.join(process.resourcesPath, 'models', 'asr-nemotron-3.5-560ms-int8')
   : path.join(__dirname, '..', 'models', 'asr-nemotron-3.5-560ms-int8');
-const englishSpeechModelDir = app.isPackaged
-  ? path.join(process.resourcesPath, 'models', 'asr-zipformer-en')
-  : path.join(__dirname, '..', 'models', 'asr-zipformer-en', 'sherpa-onnx-streaming-zipformer-en-20M-2023-02-17');
 const ttsModelDir = app.isPackaged
   ? path.join(process.resourcesPath, 'models', 'tts')
   : path.join(__dirname, '..', 'models', 'tts');
@@ -59,9 +56,8 @@ function startSpeech(request = {}) {
   const language = typeof request === 'string' ? request : request.language;
   const channel = typeof request === 'object' && request.channel === 'captions' ? 'captions' : 'voice';
   if (!['en', 'hi'].includes(language)) throw new Error('Choose English or Hindi for local speech recognition.');
-  const modelDir = language === 'en' && fs.existsSync(path.join(englishSpeechModelDir, 'encoder-epoch-99-avg-1.int8.onnx')) ? englishSpeechModelDir : speechModelDir;
-  const englishModel = modelDir === englishSpeechModelDir;
-  const files = (englishModel ? ['encoder-epoch-99-avg-1.int8.onnx', 'decoder-epoch-99-avg-1.int8.onnx', 'joiner-epoch-99-avg-1.int8.onnx', 'tokens.txt'] : ['encoder.int8.onnx', 'decoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt']).map(file => path.join(modelDir, file));
+  const modelDir = speechModelDir;
+  const files = ['encoder.int8.onnx', 'decoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt'].map(file => path.join(modelDir, file));
   if (files.some(file => !fs.existsSync(file))) {
     throw new Error('The local Hindi and English speech model is missing. Install the model files into the models folder, then restart BridgeUX.');
   }
@@ -93,7 +89,7 @@ function startSpeech(request = {}) {
   }
   return speechReadyPromise.then(() => {
     speechWorker.postMessage({ type: 'start', language, channel });
-    return { ready: true, model: englishModel ? 'Zipformer English 20M · streaming · local CPU' : 'Nemotron 3.5 ASR · Hindi streaming · local CPU' };
+    return { ready: true, model: `Nemotron 3.5 ASR 0.6B · ${language === 'hi' ? 'Hindi' : 'English'} · local CPU` };
   });
 }
 
