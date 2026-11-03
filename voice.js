@@ -317,7 +317,4 @@
     }
   }).observe($('#assistAnswer'), { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
 
-  if (localStorage.getItem('bridgeux-microphone-permission') === 'granted' && localStorage.getItem('bridgeux-voice-prompted') === 'yes') {
-    startListening();
-  }
 })();

@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('bridgeux', Object.freeze({
   chooseScreen: id => ipcRenderer.invoke('bridgeux:choose-screen', id),
   captureScreen: id => ipcRenderer.invoke('bridgeux:capture-screen', id),
   inspectScreen: request => ipcRenderer.invoke('bridgeux:inspect-screen', request),
+  translateSignVideo: frames => ipcRenderer.invoke('bridgeux:translate-sign-video', frames),
   performApprovedAction: action => ipcRenderer.invoke('bridgeux:perform-action', action),
   startSpeech: () => ipcRenderer.invoke('bridgeux:speech-start'),
   stopSpeech: () => ipcRenderer.invoke('bridgeux:speech-stop'),
@@ -15,6 +16,4 @@ contextBridge.exposeInMainWorld('bridgeux', Object.freeze({
   onSpeechResult: callback => ipcRenderer.on('bridgeux:speech-result', (_event, result) => callback(result)),
   speakText: request => ipcRenderer.invoke('bridgeux:speak-text', request),
   onTtsAudio: callback => ipcRenderer.on('bridgeux:tts-audio', (_event, audio) => callback(audio)),
-  gestureModelUrl: () => 'bridgeux://assets/vision/gesture_recognizer.task',
-  gestureWasmUrl: () => 'bridgeux://assets/vision/wasm/'
 }));

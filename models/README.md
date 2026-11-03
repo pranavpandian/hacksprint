@@ -20,9 +20,8 @@ models/
 │       ├── hi_IN-pratham-medium.onnx
 │       ├── tokens.txt
 │       └── espeak-ng-data/
-└── gesture_recognizer.task
 ```
 
 The Windows installer build copies these assets only when they exist in the source tree. The packaged app still expects Ollama to be installed separately, with `qwen2.5:1.5b-instruct` and `qwen3-vl:2b` pulled into the target Windows account's Ollama model store.
 
-The MediaPipe model recognizes seven canned static gestures. It is not a sign-language recognition or translation model.
+ASL video interpretation does not require a separate model file; it uses the local `qwen3-vl:2b` Ollama model. This is experimental and not an ASL-trained interpreter.

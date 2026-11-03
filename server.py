@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 
 ROOT = Path(__file__).resolve().parent
-MODEL = "moondream:latest"
+MODEL = "qwen2.5:1.5b-instruct"
 
 def local_fallback(task, text):
     text = text.strip()
@@ -17,7 +17,7 @@ def local_fallback(task, text):
     if task == "simplify":
         return "In simpler words: " + text + "\n\nI’m using a basic offline fallback. Check this wording against the original before relying on it."
     if task == "explain":
-        return "I can help explain this, but the local AI model is unavailable. Install Ollama with Moondream 2B, or ask the organization that provided this form. Original text: " + text
+        return "I can help explain this, but the local AI model is unavailable. Install Ollama with Qwen2.5 1.5B, or ask the organization that provided this form. Original text: " + text
     return "I can help you plan an answer, but I should not make up personal details. Think about: what is being asked, which facts you can confirm, and what you want the reader to understand. Write a draft in your own words, then review it for accuracy."
 
 class Handler(SimpleHTTPRequestHandler):
@@ -46,7 +46,7 @@ class Handler(SimpleHTTPRequestHandler):
                 raise ValueError("The local model returned an empty answer.")
             self.reply({"answer": answer, "source": "local Ollama · " + MODEL})
         except (URLError, TimeoutError, HTTPError, json.JSONDecodeError, ValueError, OSError) as exc:
-            why = "Moondream is not available from local Ollama yet. Showing a basic offline helper instead."
+            why = "Qwen2.5 is not available from local Ollama yet. Showing a basic offline helper instead."
             self.reply({"answer": local_fallback(task if 'task' in locals() else "help", text if 'text' in locals() else ""), "source": why})
 
     def do_GET(self):

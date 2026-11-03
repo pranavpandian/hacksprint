@@ -48,20 +48,6 @@
         "filter": [
           "**/*"
         ]
-      },
-      {
-        "from": "models/gesture_recognizer.task",
-        "to": "models/gesture_recognizer.task"
-      },
-      {
-        "from": "node_modules/@mediapipe/tasks-vision/wasm",
-        "to": "vision/wasm",
-        "filter": [
-          "vision_wasm_module_internal.js",
-          "vision_wasm_module_internal.wasm",
-          "vision_wasm_nosimd_internal.js",
-          "vision_wasm_nosimd_internal.wasm"
-        ]
       }
     ],
     "win": {
@@ -82,7 +68,6 @@
     }
   },
   "dependencies": {
-    "@mediapipe/tasks-vision": "^1.2.0",
     "piper-phonemize-node": "^1.5.9",
     "sherpa-onnx-node": "^2.0.1"
   }

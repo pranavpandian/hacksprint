@@ -1,90 +1,93 @@
-import { FilesetResolver, GestureRecognizer } from './node_modules/@mediapipe/tasks-vision/vision_bundle.mjs';
-
 (() => {
   const $ = selector => document.querySelector(selector);
   const video = $('#cameraPreview');
-  if (!video) return;
+  const frames = [];
   let camera = null;
-  let recognizer = null;
-  let running = false;
-  let lastVideoTime = -1;
-  let lastLabel = '';
+  let sampleTimer = null;
+  let busy = false;
 
   async function stopCamera() {
-    running = false;
-    if (camera) camera.getTracks().forEach(track => track.stop());
+    clearInterval(sampleTimer);
+    sampleTimer = null;
+    camera?.getTracks().forEach(track => track.stop());
     camera = null;
+    frames.length = 0;
     video.srcObject = null;
     video.style.display = 'none';
     $('#cameraPlaceholder').hidden = false;
     $('#startCamera').disabled = false;
+    $('#translateSign').disabled = true;
     $('#stopCamera').disabled = true;
-    $('#cameraStatus').textContent = recognizer ? 'Camera is off. The local gesture model is ready.' : 'Camera is off.';
+    $('#cameraStatus').textContent = 'Camera is off.';
   }
-
-  async function initializeGestureModel() {
-    if (recognizer) return;
-    $('#cameraStatus').textContent = 'Loading the local hand gesture model…';
-    const vision = await FilesetResolver.forVisionTasks(window.bridgeux.gestureWasmUrl(), true);
-    recognizer = await GestureRecognizer.createFromOptions(vision, {
-      baseOptions: { modelAssetPath: window.bridgeux.gestureModelUrl() },
-      runningMode: 'VIDEO', numHands: 2,
-      cannedGesturesClassifierOptions: { scoreThreshold: 0.55 }
-    });
-  }
-
-  function classifyFrame() {
-    if (!running) return;
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime !== lastVideoTime) {
-      lastVideoTime = video.currentTime;
-      try {
-        const result = recognizer.recognizeForVideo(video, performance.now());
-        const labels = (result.gestures || []).map(hand => hand[0]).filter(item => item && item.categoryName !== 'None' && item.score >= 0.55);
-        const label = labels.length ? labels.map(item => `${item.categoryName.replaceAll('_', ' ')} (${Math.round(item.score * 100)}%)`).join(' · ') : 'No known hand gesture detected.';
-        if (label !== lastLabel) {
-          lastLabel = label;
-          $('#cameraStatus').textContent = label;
-        }
-      } catch (error) {
-        $('#cameraStatus').textContent = `Local gesture recognition stopped: ${error.message}`;
-        stopCamera();
-        return;
-      }
-    }
-    setTimeout(classifyFrame, 120);
-  }
-
-  $('#loadGestureModel').onclick = async () => {
-    const button = $('#loadGestureModel');
-    button.disabled = true;
-    try {
-      await initializeGestureModel();
-      $('#cameraStatus').textContent = 'Gesture model ready. Start camera when you want live recognition.';
-    } catch (error) {
-      $('#cameraStatus').textContent = `Gesture model could not load: ${error?.stack || String(error)}`;
-    } finally { button.disabled = false; }
-  };
 
   $('#startCamera').onclick = async () => {
     $('#startCamera').disabled = true;
-    $('#cameraStatus').textContent = 'Loading the local hand gesture model…';
+    $('#cameraStatus').textContent = 'Starting camera…';
     try {
-      await initializeGestureModel();
-      camera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      camera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 1280, height: 720 }, audio: false });
       video.srcObject = camera;
       video.style.display = 'block';
       $('#cameraPlaceholder').hidden = true;
       $('#stopCamera').disabled = false;
-      $('#cameraStatus').textContent = 'Local model ready. Hold one of its listed gestures in view.';
       await video.play();
-      running = true;
-      lastLabel = '';
-      classifyFrame();
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      sampleTimer = setInterval(() => {
+        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+        const scale = Math.min(1, 640 / video.videoWidth, 480 / video.videoHeight);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        frames.push(canvas.toDataURL('image/jpeg', 0.78).split(',')[1]);
+        if (frames.length > 8) frames.shift();
+        $('#translateSign').disabled = frames.length < 2 || busy;
+      }, 500);
+      $('#cameraStatus').textContent = 'Camera on. Move close enough for both hands to be clear; sign a short phrase, then interpret.';
     } catch (error) {
       await stopCamera();
-      $('#cameraStatus').textContent = error?.name === 'NotAllowedError' ? 'Camera permission was denied. You can still use voice or text support.' : `Could not start local gesture recognition: ${error?.stack || String(error)}`;
+      $('#cameraStatus').textContent = error?.name === 'NotAllowedError' ? 'Camera permission was denied.' : `Could not start camera: ${error.message}`;
     }
   };
+
+  $('#translateSign').onclick = async () => {
+    if (busy || frames.length < 2) return;
+    busy = true;
+    $('#translateSign').disabled = true;
+    $('#typeSignText').disabled = true;
+    $('#signResult').hidden = false;
+    $('#signResult').textContent = 'Interpreting recent frames locally…';
+    try {
+      const recent = frames.slice(-8);
+      const selected = recent.length <= 4 ? recent : [0, 1 / 3, 2 / 3, 1].map(part => recent[Math.round(part * (recent.length - 1))]);
+      const text = await window.bridgeux.translateSignVideo(selected);
+      $('#signResult').textContent = text;
+      $('#typeSignText').disabled = !text || text.startsWith('I could not confidently');
+      $('#cameraStatus').textContent = 'Review the interpretation. It may be wrong.';
+    } catch (error) {
+      $('#signResult').textContent = error.message;
+      $('#cameraStatus').textContent = 'Local interpretation failed.';
+    } finally {
+      busy = false;
+      $('#translateSign').disabled = frames.length < 2;
+    }
+  };
+
+  $('#typeSignText').onclick = async () => {
+    const text = $('#signResult').textContent.trim();
+    if (!text || !window.confirm(`Type this text into the currently focused control?\n\n${text}`)) return;
+    $('#typeSignText').disabled = true;
+    $('#cameraStatus').textContent = 'Typing approved text…';
+    try {
+      await window.bridgeux.performApprovedAction({ type: 'type', text });
+      $('#cameraStatus').textContent = 'Typed. Check the focused control before continuing.';
+    } catch (error) {
+      $('#cameraStatus').textContent = `Could not type text: ${error.message}`;
+      $('#typeSignText').disabled = false;
+    }
+  };
+
+  $('#openScreenHelper').onclick = () => document.querySelector('#screenHelper').scrollIntoView({ behavior: 'smooth' });
   $('#stopCamera').onclick = stopCamera;
   window.addEventListener('pagehide', stopCamera);
 })();
