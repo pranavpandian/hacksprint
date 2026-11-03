@@ -6,7 +6,7 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 
 ## What it includes
 
-- Streaming English or Hindi speech-to-text using the local NVIDIA Nemotron 3.5 model through sherpa-onnx. First launch requires the user to choose accessibility supports and a preferred language; speech recognition and replies then use that choice.
+- Streaming English or Hindi speech-to-text through sherpa-onnx. English uses a compact int8 Zipformer model; Hindi uses the local NVIDIA Nemotron 3.5 streaming model. First launch requires the user to choose accessibility supports and a preferred language.
 - Local English and Hindi Piper neural voices for replies and read-aloud.
 - One Hugging Face Qwen3.5 4B model for the local assistant, screen vision, and experimental ASL clips, served by Ollama.
 - A local OpenClaw-style agent loop. Pair the included Chrome/Brave extension once to read and act on the active tab DOM; Windows UI Automation controls other desktop apps. Screenshots are only the fallback for visual-only apps.
@@ -14,7 +14,8 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 - Voice commands such as “open example.com”, “visit Wikipedia”, or “go to the NASA website” open that site in the default browser. It resolves named sites with web search and supports HTTP/HTTPS links.
 - Spoken web searches for flights, weather, news, and other current information. BridgeUX sends the spoken search query to DuckDuckGo, then summarizes result snippets locally and displays source links. Check provider pages for live prices and availability.
 - A user-started camera view with a compact ASL-trained landmark model for static A–Z and 0–9 handshapes. It spells stable characters, can speak them, and can type the reviewed sequence. J/Z motion and ASL grammar/sentence translation are not supported. Optional MediaPipe hand controls move the pointer, pinch to click, and use a V-sign swipe to scroll; GPU delegate is used when available.
-- Adjustable text size, contrast/theme, spacing, captions demo, and an optional Chrome helper.
+- Adjustable text size, contrast/theme, spacing, live system captions, and an optional Chrome helper.
+- Windows live captions for computer playback audio, shown in a bottom-of-screen caption bar and the floating controls. Click **Live captions** to start and **Stop** to end; audio is processed on-device. Captions recognize the selected English or Hindi speech language; they do not translate audio between languages.
 
 See [Privacy](PRIVACY.md), [Security](SECURITY.md), [architecture](docs/ARCHITECTURE.md), and [model details](models/README.md) for limits and implementation notes.
 
@@ -98,6 +99,18 @@ Move-Item 'models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06
 
 The folder must contain `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, and `tokens.txt` directly inside it. This build runs speech recognition on CPU.
 
+For English, also download the smaller 20M streaming Zipformer package. It is used for both voice requests and captions when available; the Hindi voice and captions continue to use Nemotron. The Zipformer model supports English only. The captions match recognized speech to the chosen language; they do not translate foreign-language audio.
+
+```powershell
+$zipformerArchive = Join-Path $env:TEMP 'bridgeux-zipformer-en.tar.bz2'
+Invoke-WebRequest 'https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2' -OutFile $zipformerArchive
+tar -xjf $zipformerArchive -C models
+New-Item -ItemType Directory -Force 'models/asr-zipformer-en' | Out-Null
+Move-Item 'models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17' 'models/asr-zipformer-en/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17'
+```
+
+Keep the extracted `sherpa-onnx-streaming-zipformer-en-20M-2023-02-17` folder under `models/asr-zipformer-en/`. The installer includes only its model files and tokens, not the sample audio files.
+
 ### 2. English and Hindi neural voices
 
 The following packages are published by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models):
@@ -154,7 +167,7 @@ npm ci
 npm run dist:win
 ```
 
-The x64 NSIS installer is written to `release/`. The installer includes the local speech and voice model files when present. It does **not** include Ollama or the Ollama Qwen weights; install Ollama and pull the model separately on each target machine. Model binaries and the generated installer are excluded from Git.
+The x64 NSIS installer is written to `release/`. The installer includes local speech models and voice model files when present. It does **not** include Ollama or the Ollama Qwen weights; install Ollama and pull the model separately on each target machine. Model binaries and the generated installer are excluded from Git.
 
 ## Connect the browser agent
 

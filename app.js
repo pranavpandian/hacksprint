@@ -108,32 +108,21 @@
   $('#onboardingSpeak').onclick = () => speak(prefs.interfaceLanguage === 'हिन्दी' ? 'जो सहायता आपके लिए उपयोगी हो, उसे चुनें। आपकी सहायता और भाषा की पसंद से ब्रिज यूएक्स अपनी मदद तय करता है।' : 'Choose any supports that feel useful. Your support and language choices help BridgeUX listen and reply in the language you selected.');
   $('#plainToggle').onclick = () => { $('#plainResult').hidden = !$('#plainResult').hidden; $('#plainToggle').textContent = $('#plainResult').hidden ? 'Simplify instructions' : 'Hide simpler instructions'; };
 
-  let capTimer = null, capSec = 0, capPaused = false;
-  const phrases = ['Welcome. This is a sample caption.', 'You can read along without audio.', 'Live captions are not configured in this demo.'];
-  function captionTick() {
-    if (capPaused) return;
-    capSec++;
-    $('#captionClock').textContent = `00:${String(capSec % 60).padStart(2, '0')}`;
-    if (capSec % 4 === 0) { const phrase = phrases[(capSec / 4 - 1) % phrases.length]; $('#captionText').textContent = phrase; announce(`New sample caption: ${phrase}`); }
-  }
-  $('#startCaption').onclick = () => {
-    if (capTimer) return;
-    capPaused = false;
-    $('#startCaption').disabled = true;
-    $('#pauseCaption').disabled = false;
-    $('#pauseCaption').textContent = 'Pause';
-    $('#captionText').textContent = phrases[0];
-    announce('Sample captions started. Microphone is not active.');
-    capTimer = setInterval(captionTick, 1000);
+  $('#startCaption').onclick = async () => {
+    try { await window.bridgeuxStartSystemCaptions(); $('#startCaption').disabled = true; $('#pauseCaption').disabled = false; $('#pauseCaption').textContent = 'Stop live captions'; }
+    catch (error) { $('#liveCaptionStatus').textContent = error.message; }
   };
-  $('#pauseCaption').onclick = () => { capPaused = !capPaused; $('#pauseCaption').textContent = capPaused ? 'Resume' : 'Pause'; announce(capPaused ? 'Captions paused.' : 'Captions resumed.'); };
-  $('#clearCaption').onclick = () => {
-    clearInterval(capTimer); capTimer = null; capPaused = false; capSec = 0;
-    $('#captionClock').textContent = '00:00';
-    $('#captionText').textContent = 'Captions will appear here when you start the sample.';
+  $('#pauseCaption').onclick = async () => {
+    await window.bridgeuxStopSystemCaptions?.();
     $('#startCaption').disabled = false; $('#pauseCaption').disabled = true;
-    announce('Sample captions cleared and stopped.');
   };
+  $('#clearCaption').onclick = () => { $('#captionText').textContent = 'Live captions will appear here when you start system audio capture.'; };
+  window.addEventListener('bridgeux:captions-changed', event => {
+    const running = Boolean(event.detail?.running);
+    $('#startCaption').disabled = running;
+    $('#pauseCaption').disabled = !running;
+    $('#pauseCaption').textContent = 'Stop captions';
+  });
   $('#resetSettings').onclick = () => {
     localStorage.removeItem('bridgeux-preferences');
     prefs = { supports: [], interfaceLanguage: 'English', textSize: 100, theme: 'light', spacious: false, reduceMotion: false };

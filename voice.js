@@ -11,12 +11,14 @@
   let stream = null;
   let inputContext = null;
   let worklet = null;
+  let mutedOutput = null;
   let source = null;
   let finalText = '';
   let partialText = '';
   let replyText = '';
   let replyLanguage = 'en';
   let agentRequestInFlight = false;
+  let lastVoiceAnswer = '';
 
   let playbackContext = null;
   let playbackCursor = 0;
@@ -53,6 +55,7 @@
     try { return JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}').interfaceLanguage === 'हिन्दी' ? 'hi' : 'en'; }
     catch { return 'en'; }
   }
+  window.bridgeux.setVoiceLanguage(getVoiceLanguage());
 
   function setListening(active) {
     $('#startSpeech').disabled = active;
@@ -60,16 +63,18 @@
   }
 
   async function pauseMicForReply() {
-    if (!stream || !inputContext || inputContext.state === 'closed') return;
+    const overlayListening = await window.bridgeux.isVoiceListening().catch(() => false);
+    if (!stream && !overlayListening) return;
     micPausedForReply = true;
-    if (inputContext.state === 'running') await inputContext.suspend();
+    if (stream && inputContext && inputContext.state !== 'closed' && inputContext.state === 'running') await inputContext.suspend();
     await window.bridgeux.pauseSpeech();
   }
 
   async function maybeResumeMic() {
     if (!ttsFinished || activeSources > 0 || micResumeInFlight) return;
     if (!micPausedForReply) return;
-    if (!stream || !inputContext || inputContext.state === 'closed') {
+    const overlayListening = await window.bridgeux.isVoiceListening().catch(() => false);
+    if ((!stream || !inputContext || inputContext.state === 'closed') && !overlayListening) {
       micPausedForReply = false;
       return;
     }
@@ -77,9 +82,9 @@
     micPausedForReply = false;
     micResumeInFlight = true;
     try {
-      await window.bridgeux.startSpeech(getVoiceLanguage());
+      await window.bridgeux.startSpeech(getVoiceLanguage(), 'voice');
       if (stream && inputContext?.state === 'suspended') await inputContext.resume();
-      if (stream) speechStatus.textContent = 'Listening and replying locally.';
+      speechStatus.textContent = 'Listening and replying locally.';
     } catch (error) {
       speechStatus.textContent = `Speech recognition could not resume: ${error.message}`;
       setListening(false);
@@ -129,6 +134,7 @@
         worklet.port.close();
         worklet = null;
       }
+      if (mutedOutput) { mutedOutput.disconnect(); mutedOutput = null; }
       if (source) {
         source.disconnect();
         source = null;
@@ -146,30 +152,36 @@
     } catch {}
     setListening(false);
     speechStatus.textContent = message;
+    window.bridgeux.setAgentStatus({ listening: false, message });
   }
 
   async function startListening() {
     setListening(true);
-    speechStatus.textContent = 'Starting local Hindi/English recognition…';
+    speechStatus.textContent = 'Connecting microphone…';
     try {
       const language = getVoiceLanguage();
-      const ready = await window.bridgeux.startSpeech(language);
+      if (!inputContext || inputContext.state === 'closed') inputContext = new AudioContext();
+      await inputContext.resume();
       stream = stream || await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        },
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false
       });
-      speechStatus.textContent = `${ready.model}. Listening and replying locally.`;
-      inputContext = new AudioContext();
+      localStorage.setItem('bridgeux-microphone-permission', 'granted');
+      speechStatus.textContent = 'Loading the local speech model…';
+      const ready = await window.bridgeux.startSpeech(language);
       await inputContext.audioWorklet.addModule('speech-capture.js');
       source = inputContext.createMediaStreamSource(stream);
       worklet = new AudioWorkletNode(inputContext, 'bridgeux-capture');
       worklet.port.onmessage = event => window.bridgeux.sendSpeechAudio(event.data);
       source.connect(worklet);
+      // A worklet that is not connected to the render graph may never be pulled.
+      // Route its silent output through a zero-gain node to keep capture running.
+      mutedOutput = inputContext.createGain();
+      mutedOutput.gain.value = 0;
+      worklet.connect(mutedOutput);
+      mutedOutput.connect(inputContext.destination);
+      speechStatus.textContent = `${ready.model}. Microphone connected; listening in ${language === 'hi' ? 'Hindi' : 'English'}.`;
+      window.bridgeux.setAgentStatus({ listening: true, message: `Listening in ${language === 'hi' ? 'Hindi' : 'English'}…` });
       finalText = '';
       partialText = '';
       transcript.textContent = language === 'hi' ? 'सुन रहा हूँ… हिन्दी में बोलें।' : 'Listening… speak in English.';
@@ -177,7 +189,7 @@
       $('#sendTranscriptToHelper').disabled = false;
       $('#sendTranscriptToScreen').disabled = false;
     } catch (error) {
-      await stopListening(error.message || 'Could not start local speech recognition.');
+      await stopListening(`Could not start listening: ${error.message || 'Check microphone access and local speech model files.'}`);
     }
   }
 
@@ -288,10 +300,14 @@
       const preferences = JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}');
       const language = getVoiceLanguage() === 'hi' ? 'हिन्दी' : 'English';
       const result = await window.bridgeux.askLocal({ task: $('#assistTask').value || 'help', text, language, supports: preferences.supports || [] });
+      replyText = result.answer;
       answer.textContent = `${result.answer}\n\n${result.source}`;
     } catch {
-      answer.textContent = 'I could not reach the local assistant. Check that Ollama is running and that Qwen is installed.';
+      replyText = 'I could not reach the local assistant. Check that Ollama is running and that Qwen is installed.';
+      answer.textContent = replyText;
     }
+    lastVoiceAnswer = replyText;
+    playReply(replyText, language);
   }
 
   window.addEventListener('bridgeux:setup-complete', () => dialog.showModal());
@@ -327,12 +343,14 @@
   $('#startSpeech').onclick = () => startListening();
   $('#stopSpeech').onclick = () => stopListening();
   window.addEventListener('bridgeux:preferences-changed', async () => {
+    window.bridgeux.setVoiceLanguage(getVoiceLanguage());
     if (!stream || $('#stopSpeech').disabled) return;
     await stopListening('Restarting speech with your updated language…');
     await startListening();
   });
 
   window.bridgeux.onSpeechResult(result => {
+    if (result.channel === 'captions') return;
     if (result.type === 'error') {
       speechStatus.textContent = `Speech recognizer error: ${result.message}`;
       return;
@@ -347,12 +365,32 @@
       replyLanguage = language;
       localStorage.setItem('bridgeux-last-voice-language', language);
       speechStatus.textContent = `Heard ${language === 'hi' ? 'Hindi' : 'English'} · working locally…`;
+      window.bridgeux.setAgentStatus({ listening: true, message: `Heard: ${text}` });
       $('#liveRegion').textContent = `${language === 'hi' ? 'Hindi' : 'English'} speech: ${text}`;
-      if (text.length >= 3) handleVoiceRequest(text, language);
+      if (text.length >= 3) handleVoiceRequest(text, language).catch(error => {
+        replyText = error.message || 'I could not complete that voice request.';
+        speechStatus.textContent = replyText;
+        playReply(replyText, language);
+      });
     } else {
       partialText = text;
     }
     transcript.textContent = [finalText, partialText].filter(Boolean).join(' ') || 'Listening…';
+  });
+
+  window.bridgeux.onOverlayCommand(async command => {
+    const language = getVoiceLanguage();
+    if (command.type === 'toggle-listening') {
+      if (stream) await stopListening(); else await startListening();
+    } else if (command.type === 'ask-screen') {
+      await handleVoiceRequest('Read my current screen and explain it in simple language.', language);
+    } else if (command.type === 'ask' && command.text) {
+      await handleVoiceRequest(command.text, language);
+    } else if (command.type === 'stop-all') {
+      window.bridgeuxStopAgent?.();
+      await stopListening();
+      await window.bridgeuxStopSystemCaptions?.();
+    }
   });
 
   window.bridgeux.onTtsAudio(message => {
@@ -411,6 +449,7 @@
     const answer = $('#assistAnswer');
     if (!answer.hidden && answer.textContent.trim() && !answer.textContent.startsWith('Working on')) {
       replyText = answer.textContent.split('\n\n')[0];
+      if (lastVoiceAnswer && replyText === lastVoiceAnswer) { lastVoiceAnswer = ''; return; }
       if (localStorage.getItem('bridgeux-microphone-permission') === 'granted') {
         playReply(replyText, getVoiceLanguage());
       }

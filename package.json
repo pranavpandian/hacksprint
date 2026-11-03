@@ -33,6 +33,10 @@
       "local.js",
       "local-screen.js",
       "voice.js",
+      "system-captions.js",
+      "agent-status.css",
+      "caption-overlay.html",
+      "caption-overlay.js",
       "voice.css",
       "speech-capture.js",
       "sign-vision.js",
@@ -48,6 +52,11 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "models/asr-zipformer-en/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17",
+        "to": "models/asr-zipformer-en",
+        "filter": ["tokens.txt", "encoder-epoch-99-avg-1.int8.onnx", "decoder-epoch-99-avg-1.int8.onnx", "joiner-epoch-99-avg-1.int8.onnx"]
       },
       {
         "from": "models/tts",

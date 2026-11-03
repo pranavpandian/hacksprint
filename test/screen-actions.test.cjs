@@ -128,3 +128,19 @@ test('local browser bridge authenticates the extension and returns page task res
     assert.equal((await mediaAction).message, 'Paused the YouTube video.');
   } finally { bridge.close(); }
 });
+
+test('an occupied browser bridge port is reported without crashing the app', async () => {
+  const http = require('node:http');
+  const { createBrowserBridge } = require('../electron/browser-bridge.cjs');
+  const owner = http.createServer();
+  await new Promise(resolve => owner.listen(0, '127.0.0.1', resolve));
+  const bridge = createBrowserBridge('test-pairing-token', owner.address().port);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.match(bridge.error, /port is in use/i);
+    await assert.rejects(bridge.request('snapshot'), /port is in use/i);
+  } finally {
+    bridge.close();
+    await new Promise(resolve => owner.close(resolve));
+  }
+});

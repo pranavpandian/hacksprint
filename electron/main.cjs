@@ -13,6 +13,12 @@ const { normalizeWebsiteUrl } = require('./browser-navigation.cjs');
 const { firstVisibleYoutubeVideo, youtubeMediaControl, browserMediaIntent, routeAgentTask } = require('./browser-intents.cjs');
 const { createBrowserBridge } = require('./browser-bridge.cjs');
 
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) app.quit();
+else app.on('second-instance', () => {
+  const win = BrowserWindow.getAllWindows().find(item => item !== agentStatusWindow && item !== captionOverlayWindow && !item.isDestroyed());
+  if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+});
 
 const MODEL = 'hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M';
 const ASSISTANT_MODEL = MODEL;
@@ -28,44 +34,71 @@ let gestureEnabled = false;
 let lastUiSnapshot = null;
 let speechWorker = null;
 let speechReadyPromise = null;
+let speechWorkerLanguage = null;
 let ttsWorker = null;
 let ollamaStarting = null;
 let browserBridgeToken = '';
 let browserBridge = null;
 let agentStatusWindow = null;
+let captionOverlayWindow = null;
+let latestCaptionText = 'Listening to computer audio…';
 let agentStatusMessage = 'BridgeUX is working';
+const agentStatusState = { active: false, listening: false, captionsActive: false, message: 'BridgeUX is ready' };
+let preferredVoiceLanguage = 'en';
 const speechModelDir = app.isPackaged
   ? path.join(process.resourcesPath, 'models', 'asr-nemotron-3.5-560ms-int8')
   : path.join(__dirname, '..', 'models', 'asr-nemotron-3.5-560ms-int8');
+const englishSpeechModelDir = app.isPackaged
+  ? path.join(process.resourcesPath, 'models', 'asr-zipformer-en')
+  : path.join(__dirname, '..', 'models', 'asr-zipformer-en', 'sherpa-onnx-streaming-zipformer-en-20M-2023-02-17');
 const ttsModelDir = app.isPackaged
   ? path.join(process.resourcesPath, 'models', 'tts')
   : path.join(__dirname, '..', 'models', 'tts');
 
-function startSpeech(language = 'en') {
+function startSpeech(request = {}) {
+  const language = typeof request === 'string' ? request : request.language;
+  const channel = typeof request === 'object' && request.channel === 'captions' ? 'captions' : 'voice';
   if (!['en', 'hi'].includes(language)) throw new Error('Choose English or Hindi for local speech recognition.');
-  const files = ['encoder.int8.onnx', 'decoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt'].map(file => path.join(speechModelDir, file));
+  const modelDir = language === 'en' && fs.existsSync(path.join(englishSpeechModelDir, 'encoder-epoch-99-avg-1.int8.onnx')) ? englishSpeechModelDir : speechModelDir;
+  const englishModel = modelDir === englishSpeechModelDir;
+  const files = (englishModel ? ['encoder-epoch-99-avg-1.int8.onnx', 'decoder-epoch-99-avg-1.int8.onnx', 'joiner-epoch-99-avg-1.int8.onnx', 'tokens.txt'] : ['encoder.int8.onnx', 'decoder.int8.onnx', 'joiner.int8.onnx', 'tokens.txt']).map(file => path.join(modelDir, file));
   if (files.some(file => !fs.existsSync(file))) {
     throw new Error('The local Hindi and English speech model is missing. Install the model files into the models folder, then restart BridgeUX.');
   }
+  if (speechWorker && speechWorkerLanguage !== language) {
+    speechWorker.terminate();
+    speechWorker = null;
+    speechReadyPromise = null;
+    speechWorkerLanguage = null;
+  }
   if (!speechWorker) {
     speechReadyPromise = new Promise((resolve, reject) => {
-      speechWorker = new Worker(path.join(__dirname, 'speech-asr-worker.cjs'), { workerData: { modelDir: speechModelDir } });
+      speechWorker = new Worker(path.join(__dirname, 'speech-asr-worker.cjs'), { workerData: { modelDir } });
+      speechWorkerLanguage = language;
       speechWorker.on('message', message => {
         if (message.type === 'ready') resolve();
         if (message.type === 'error') reject(new Error(message.message));
+        if (message.type === 'transcript' && message.channel === 'captions') {
+          latestCaptionText = String(message.text || '').slice(-280);
+          if (!captionOverlayWindow || captionOverlayWindow.isDestroyed()) createCaptionOverlayWindow();
+          captionOverlayWindow?.webContents.send('bridgeux:caption-text', { text: message.text, final: message.final });
+          agentStatusWindow?.webContents.send('bridgeux:caption-text', { text: message.text, final: message.final });
+          for (const win of BrowserWindow.getAllWindows()) if (win !== captionOverlayWindow && !win.isDestroyed()) win.webContents.send('bridgeux:speech-result', message);
+          return;
+        }
         for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed()) win.webContents.send('bridgeux:speech-result', message);
       });
-      speechWorker.on('error', error => { speechWorker = null; speechReadyPromise = null; reject(error); });
+      speechWorker.on('error', error => { speechWorker = null; speechReadyPromise = null; speechWorkerLanguage = null; reject(error); });
     });
   }
   return speechReadyPromise.then(() => {
-    speechWorker.postMessage({ type: 'start', language });
-    return { ready: true, model: 'Nemotron 3.5 ASR 0.6B · Hindi + English · local' };
+    speechWorker.postMessage({ type: 'start', language, channel });
+    return { ready: true, model: englishModel ? 'Zipformer English 20M · streaming · local CPU' : 'Nemotron 3.5 ASR · Hindi streaming · local CPU' };
   });
 }
 
-function stopSpeech() {
-  speechWorker?.postMessage({ type: 'stop' });
+function stopSpeech(channel = 'voice') {
+  speechWorker?.postMessage({ type: 'stop', channel });
   return { stopped: true };
 }
 
@@ -74,9 +107,11 @@ function pauseSpeech() {
   return { paused: true };
 }
 
-function processSpeechAudio(samples) {
+function processSpeechAudio(payload) {
+  const samples = payload instanceof Float32Array ? payload : payload?.samples;
+  const channel = payload?.channel === 'captions' ? 'captions' : 'voice';
   if (!(samples instanceof Float32Array) || samples.length < 320 || samples.length > 32000) return;
-  speechWorker?.postMessage({ type: 'audio', samples }, [samples.buffer]);
+  speechWorker?.postMessage({ type: 'audio', samples, channel }, [samples.buffer]);
 }
 
 function speakText(payload) {
@@ -402,16 +437,34 @@ async function getUiSnapshot() {
 function createAgentStatusWindow() {
   const area = screen.getPrimaryDisplay().workArea;
   agentStatusWindow = new BrowserWindow({
-    width: 292, height: 82, x: area.x + 18, y: area.y + 18,
+    width: 368, height: 410, x: area.x + 18, y: area.y + 18,
     frame: false, resizable: false, movable: true, show: false,
-    alwaysOnTop: true, skipTaskbar: true, backgroundColor: '#123b32',
+    alwaysOnTop: true, skipTaskbar: true, transparent: true, hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
   agentStatusWindow.setAlwaysOnTop(true, 'floating');
   agentStatusWindow.setMenuBarVisibility(false);
   agentStatusWindow.on('closed', () => { agentStatusWindow = null; });
-  agentStatusWindow.webContents.on('did-finish-load', () => agentStatusWindow?.webContents.send('bridgeux:agent-status', { active: true, message: agentStatusMessage }));
+  agentStatusWindow.webContents.on('did-finish-load', () => agentStatusWindow?.webContents.send('bridgeux:agent-status', agentStatusState));
   agentStatusWindow.loadFile(path.join(__dirname, '..', 'agent-status.html'));
+}
+
+function createCaptionOverlayWindow() {
+  if (captionOverlayWindow && !captionOverlayWindow.isDestroyed()) return captionOverlayWindow;
+  const area = screen.getPrimaryDisplay().workArea;
+  captionOverlayWindow = new BrowserWindow({
+    width: Math.min(980, area.width - 48), height: 116,
+    x: area.x + Math.round((area.width - Math.min(980, area.width - 48)) / 2), y: area.y + area.height - 140,
+    frame: false, resizable: false, movable: false, show: false, transparent: true,
+    alwaysOnTop: true, skipTaskbar: true, hasShadow: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true }
+  });
+  captionOverlayWindow.setAlwaysOnTop(true, 'floating');
+  captionOverlayWindow.setIgnoreMouseEvents(true, { forward: true });
+  captionOverlayWindow.on('closed', () => { captionOverlayWindow = null; });
+  captionOverlayWindow.webContents.on('did-finish-load', () => captionOverlayWindow?.webContents.send('bridgeux:caption-text', { text: latestCaptionText, final: false }));
+  captionOverlayWindow.loadFile(path.join(__dirname, '..', 'caption-overlay.html'));
+  return captionOverlayWindow;
 }
 
 function hideAgentStatusForCapture() {
@@ -542,7 +595,7 @@ async function captureScreen(id) {
 }
 
 ipcMain.handle('bridgeux:model-status', () => modelStatus());
-ipcMain.handle('bridgeux:browser-bridge', () => ({ token: browserBridgeToken, connected: Boolean(browserBridge?.connected), port: 18765, extensionPath: app.isPackaged ? path.join(process.resourcesPath, 'browser-extension') : path.join(__dirname, '..', 'browser-extension') }));
+ipcMain.handle('bridgeux:browser-bridge', () => ({ token: browserBridgeToken, connected: Boolean(browserBridge?.connected), error: browserBridge?.error || '', port: browserBridge?.port || 18765, extensionPath: app.isPackaged ? path.join(process.resourcesPath, 'browser-extension') : path.join(__dirname, '..', 'browser-extension') }));
 ipcMain.handle('bridgeux:ask-local', (_event, payload) => askLocal(payload));
 ipcMain.handle('bridgeux:inspect-screen', (_event, payload) => inspectScreen(payload));
 ipcMain.handle('bridgeux:agent-mode', (_event, enabled) => {
@@ -604,15 +657,45 @@ ipcMain.handle('bridgeux:agent-step', async (_event, payload) => {
   throw new Error('I could not read a YouTube media control. Keep the video tab active; for more reliable control, install and pair the BridgeUX browser extension.');
 });
 ipcMain.handle('bridgeux:agent-status', (_event, payload) => {
-  const active = payload?.active === true;
+  if (typeof payload?.active === 'boolean') agentStatusState.active = payload.active;
+  if (typeof payload?.listening === 'boolean') agentStatusState.listening = payload.listening;
+  if (typeof payload?.captionsActive === 'boolean') agentStatusState.captionsActive = payload.captionsActive;
+  if (typeof payload?.message === 'string') agentStatusState.message = String(payload.message).slice(0, 180);
+  agentStatusMessage = agentStatusState.message;
+  const active = agentStatusState.active || agentStatusState.listening || agentStatusState.captionsActive;
   if (active) {
-    agentStatusMessage = String(payload.message || 'BridgeUX is working').slice(0, 90);
     if (!agentStatusWindow || agentStatusWindow.isDestroyed()) createAgentStatusWindow();
-    else agentStatusWindow.webContents.send('bridgeux:agent-status', { active, message: agentStatusMessage });
+    else agentStatusWindow.webContents.send('bridgeux:agent-status', agentStatusState);
     agentStatusWindow.showInactive();
   } else if (agentStatusWindow && !agentStatusWindow.isDestroyed()) agentStatusWindow.close();
   return { visible: active };
 });
+ipcMain.on('bridgeux:overlay-command', (_event, command) => {
+  if (!command || !['toggle-listening', 'ask-screen', 'ask', 'start-captions', 'stop-captions', 'stop-all', 'dismiss'].includes(command.type)) return;
+  if (command.type === 'dismiss') { agentStatusWindow?.hide(); return; }
+  const win = BrowserWindow.getAllWindows().find(item => item !== agentStatusWindow && item !== captionOverlayWindow && !item.isDestroyed());
+  win?.webContents.send('bridgeux:overlay-command', { type: command.type, text: typeof command.text === 'string' ? command.text.slice(0, 800) : '' });
+});
+ipcMain.handle('bridgeux:show-main-window', () => {
+  const win = BrowserWindow.getAllWindows().find(item => item !== agentStatusWindow && item !== captionOverlayWindow && !item.isDestroyed());
+  if (!win) return { shown: false };
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+  return { shown: true };
+});
+ipcMain.handle('bridgeux:caption-overlay', (_event, payload) => {
+  if (payload?.visible === true) {
+    if (!captionOverlayWindow || captionOverlayWindow.isDestroyed()) createCaptionOverlayWindow();
+    latestCaptionText = String(payload.text || 'Listening to computer audio…').slice(0, 280);
+    if (!captionOverlayWindow.webContents.isLoadingMainFrame()) captionOverlayWindow.webContents.send('bridgeux:caption-text', { text: latestCaptionText, final: false });
+    captionOverlayWindow.showInactive();
+  } else if (captionOverlayWindow && !captionOverlayWindow.isDestroyed()) captionOverlayWindow.hide();
+  return { visible: payload?.visible === true };
+});
+ipcMain.on('bridgeux:voice-language', (_event, language) => { if (language === 'en' || language === 'hi') preferredVoiceLanguage = language; });
+ipcMain.handle('bridgeux:voice-language', () => preferredVoiceLanguage);
+ipcMain.handle('bridgeux:voice-listening', () => agentStatusState.listening);
 ipcMain.on('bridgeux:overlay-stop', () => {
   for (const win of BrowserWindow.getAllWindows()) if (win !== agentStatusWindow && !win.isDestroyed()) win.webContents.send('bridgeux:agent-stop-request');
 });
@@ -640,8 +723,8 @@ ipcMain.handle('bridgeux:perform-action', (_event, action) => performApprovedAct
 ipcMain.handle('bridgeux:list-screens', () => listCaptureSources());
 ipcMain.handle('bridgeux:choose-screen', (_event, id) => chooseCaptureSource(id));
 ipcMain.handle('bridgeux:capture-screen', (_event, id) => captureScreen(id));
-ipcMain.handle('bridgeux:speech-start', (_event, language) => startSpeech(language));
-ipcMain.handle('bridgeux:speech-stop', () => stopSpeech());
+ipcMain.handle('bridgeux:speech-start', (_event, request) => startSpeech(request));
+ipcMain.handle('bridgeux:speech-stop', (_event, channel) => stopSpeech(channel));
 ipcMain.handle('bridgeux:speech-pause', () => pauseSpeech());
 ipcMain.on('bridgeux:speech-audio', (_event, samples) => processSpeechAudio(samples));
 ipcMain.handle('bridgeux:speak-text', (_event, payload) => speakText(payload));
@@ -667,6 +750,7 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  if (!hasSingleInstanceLock) return;
   browserBridgeToken = loadBrowserBridgeToken();
   browserBridge = createBrowserBridge(browserBridgeToken, 18765, payload => askLocal({
     task: payload?.task,
@@ -675,7 +759,14 @@ app.whenReady().then(async () => {
     supports: []
   }));
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-    callback(permission === 'media');
+    callback(permission === 'media' || permission === 'display-capture');
+  });
+  session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+    if (!request.audioRequested || !request.videoRequested) return callback(null);
+    try {
+      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+      callback(sources[0] ? { video: sources[0], audio: 'loopback' } : null);
+    } catch { callback(null); }
   });
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

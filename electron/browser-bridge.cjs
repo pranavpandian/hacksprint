@@ -7,6 +7,7 @@ function createBrowserBridge(token, port = 18765, assist = null) {
   const jobs = [];
   const waiting = new Map();
   let connectedAt = 0;
+  let listenError = null;
   const server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
@@ -57,11 +58,16 @@ function createBrowserBridge(token, port = 18765, assist = null) {
     }
     res.writeHead(404).end();
   });
+  // A previous app version may still own the port during an update. Keep the
+  // accessibility app usable and report the browser bridge issue in its UI.
+  server.on('error', error => { listenError = error; });
   server.listen(port, '127.0.0.1');
   return {
     get port() { return server.address()?.port; },
+    get error() { return listenError?.code === 'EADDRINUSE' ? 'The browser bridge port is in use. Close any older BridgeUX window and restart this app.' : listenError?.message || ''; },
     get connected() { return Date.now() - connectedAt < 120000; },
     request(type, payload = {}, timeoutMs = 8000) {
+      if (listenError) return Promise.reject(new Error(this.error || 'The local browser bridge could not start.'));
       if (!this.connected) return Promise.reject(new Error('Attach the BridgeUX extension to your browser first.'));
       const id = randomUUID();
       return new Promise((resolve, reject) => {
@@ -69,7 +75,7 @@ function createBrowserBridge(token, port = 18765, assist = null) {
         waiting.set(id, { resolve, reject, timer }); jobs.push({ id, type, payload });
       });
     },
-    close() { for (const item of waiting.values()) { clearTimeout(item.timer); item.reject(new Error('Browser bridge closed.')); } waiting.clear(); server.close(); }
+    close() { for (const item of waiting.values()) { clearTimeout(item.timer); item.reject(new Error('Browser bridge closed.')); } waiting.clear(); if (server.listening) server.close(); }
   };
 }
 

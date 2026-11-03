@@ -11,6 +11,12 @@ models/
 │   ├── decoder.int8.onnx
 │   ├── joiner.int8.onnx
 │   └── tokens.txt
+├── asr-zipformer-en/
+│   └── sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/
+│       ├── encoder-epoch-99-avg-1.int8.onnx
+│       ├── decoder-epoch-99-avg-1.int8.onnx
+│       ├── joiner-epoch-99-avg-1.int8.onnx
+│       └── tokens.txt
 ├── gesture/
 │   └── gesture_recognizer.task
 ├── sign/
@@ -26,6 +32,8 @@ models/
 │       ├── tokens.txt
 │       └── espeak-ng-data/
 ```
+
+English voice and live captions use the compact streaming Zipformer model when installed. Hindi uses Nemotron. Live Windows playback captions are user-started, processed locally, and displayed in the selected recognition language; they do not translate between languages. See [the English model setup](../README.md#1-streaming-hindienglish-speech-recognition) for the download command.
 
 The Windows installer build copies these assets only when they exist in the source tree. The packaged app still expects Ollama to be installed separately, with `hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M` pulled into the target Windows account's Ollama model store.
 
