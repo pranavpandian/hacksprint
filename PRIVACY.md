@@ -8,13 +8,15 @@ On first launch, BridgeUX requires the user to choose at least one accessibility
 
 ## Screen sharing
 
-Screen capture is off until the user selects a display and starts a capture, live-help session, or explicitly enables hands-free mode. Hands-free mode uses each spoken goal with up to six screen snapshots to plan constrained navigation/search actions. It stops on unclear or sensitive requests and does not submit forms, send, delete, purchase, change settings, or enter credentials. Captured frames are held in memory and sent to the local Ollama service at `127.0.0.1`; BridgeUX does not save them to disk or send them to a hosted AI endpoint. Say “stop agent” or press **Stop agent** to interrupt.
+Screen access starts only when the user asks for screen reading or enables hands-free mode. BridgeUX first reads the active window's accessible text and controls through Windows UI Automation; this avoids screenshots when apps expose accessibility data. Visual-only content can use a selected-display screenshot fallback. Hands-free mode plans up to six constrained navigation/search actions. For forms it asks for each value, fills only the exact spoken response, and never submits. It stops on unclear or sensitive requests and does not send, delete, purchase, change settings, or enter credentials. Visual fallback frames stay in memory and go to local Ollama at `127.0.0.1`; BridgeUX does not save them to disk or send them to hosted AI. Say “stop agent” or press **Stop agent** to interrupt.
 
 The content visible on a screen can be sensitive. Review the screen before starting capture or live help. Ollama, its model downloads, and any other installed software have their own behavior and terms outside BridgeUX.
 
+When the user asks for current information or explicitly requests a web search, BridgeUX sends that spoken query to DuckDuckGo over the internet. It displays result links and uses local Ollama to summarize titles and snippets. Screen contents are not included in the search query. Search snippets can be incomplete; confirm flight prices and availability with the provider.
+
 ## Camera and experimental ASL demo
 
-Camera access is optional and begins only after the user starts the camera and grants permission. A short rolling buffer of frames is kept in app memory and sent to the local Ollama Qwen3-VL model only when the user requests interpretation. The camera feed and frames are not saved by BridgeUX or sent to a cloud service. This general vision model is not trained for ASL and its guesses are experimental, not a reliable translation.
+Camera access is optional and begins only after the user starts the camera and grants permission. A short rolling buffer of frames is kept in app memory and sent to the local Ollama Qwen3-VL model only when the user requests interpretation. The camera feed and frames are not saved by BridgeUX or sent to a cloud service. Optional hand controls run Google's MediaPipe recognizer on-device while enabled. This general vision model is not trained for ASL and its guesses are experimental, not a reliable translation.
 
 ## Browser helper and network
 

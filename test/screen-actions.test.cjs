@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction } = require('../electron/screen-actions.cjs');
+const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction } = require('../electron/screen-actions.cjs');
 
 const screen = { width: 1280, height: 720 };
 
@@ -52,4 +52,20 @@ test('agent goals and autonomous actions stay within the low-risk allowlist', ()
   assert.equal(validateAgentAction({ type: 'press', key: 'ENTER', target: 'Form submit button', reason: 'Continue' }, screen, 'Open help'), null);
   const enterSearch = { type: 'press', key: 'ENTER', target: 'Google search field', reason: 'Search' };
   assert.deepEqual(validateAgentAction(enterSearch, screen, 'Search for cats'), enterSearch);
+});
+
+test('Windows UI actions target named safe controls and exact user-provided search text', () => {
+  const snapshot = { elements: [
+    { id: 'e1', name: 'Help', role: 'Hyperlink', automationId: '', password: false },
+    { id: 'e2', name: 'Search', role: 'Edit', automationId: 'q', password: false },
+    { id: 'e3', name: 'Password', role: 'Edit', automationId: 'pw', password: true },
+    { id: 'e4', name: 'Delete account', role: 'Button', automationId: '', password: false }
+  ] };
+  const openHelp = { type: 'invoke', elementId: 'e1', reason: 'Open help' };
+  assert.deepEqual(validateUiAgentAction(openHelp, snapshot, 'Open the help page'), openHelp);
+  const search = { type: 'setValue', elementId: 'e2', value: 'Chennai to Jodhpur flights', reason: 'Search the requested route' };
+  assert.deepEqual(validateUiAgentAction(search, snapshot, 'Search for Chennai to Jodhpur flights'), search);
+  assert.equal(validateUiAgentAction({ ...search, value: 'another route' }, snapshot, 'Search for Chennai to Jodhpur flights'), null);
+  assert.equal(validateUiAgentAction({ ...search, elementId: 'e3' }, snapshot, 'Search for Chennai to Jodhpur flights'), null);
+  assert.equal(validateUiAgentAction({ ...openHelp, elementId: 'e4' }, snapshot, 'Open the help page'), null);
 });

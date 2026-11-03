@@ -162,12 +162,14 @@
 
     if (/\b(?:stop|halt|cancel) (?:the )?(?:agent|automation|computer|pc)\b|एजेंट बंद/.test(normalized)) {
       window.bridgeuxStopAgent?.();
+      window.bridgeuxCancelPendingForm?.();
       replyText = language === 'hi' ? 'एजेंट रोक दिया।' : 'I stopped the agent.';
       playReply(replyText, language);
       return;
     }
     if (/\b(stop listening|stop microphone|pause listening)\b|सुनना बंद/.test(normalized)) {
       window.bridgeuxStopAgent?.();
+      window.bridgeuxCancelPendingForm?.();
       await stopListening('Voice listening stopped by request.');
       replyText = 'I stopped listening.';
       playReply(replyText, language);
@@ -177,7 +179,41 @@
       playReply(replyText || 'I do not have a previous reply yet.', language);
       return;
     }
+    if (window.bridgeuxHasPendingForm?.()) {
+      replyText = await window.bridgeuxAnswerForm(text, language);
+      playReply(replyText, language);
+      return;
+    }
     if (agentRequestInFlight) return;
+
+    if (/\b(?:open|launch|start) (?:my )?(?:default )?(?:web )?browser\b|\bopen brave\b/i.test(text)) {
+      try {
+        await window.bridgeux.openBrowser();
+        replyText = language === 'hi' ? 'आपका डिफ़ॉल्ट ब्राउज़र खोल दिया।' : 'I opened your default browser.';
+      } catch (error) {
+        replyText = error.message || 'I could not open your default browser.';
+      }
+      playReply(replyText, language);
+      return;
+    }
+
+    const needsWebSearch = /\b(?:flights?|airfares?|weather|news|today|latest|current price|search (?:the )?web|search (?:the )?internet|look up (?:online|on the internet))\b/i.test(text);
+    if (needsWebSearch && window.bridgeux?.searchWeb) {
+      const output = $('#assistAnswer');
+      output.hidden = false;
+      output.textContent = 'Searching the web for this question…';
+      $('#assistant').scrollIntoView({ behavior: 'smooth' });
+      try {
+        const result = await window.bridgeux.searchWeb({ query: text, language: getVoiceLanguage() === 'hi' ? 'हिन्दी' : 'English' });
+        replyText = result.answer;
+        output.textContent = `${result.answer}\n\nSources:\n${result.sources.map((source, index) => `${index + 1}. ${source.title}\n${source.url}`).join('\n')}`;
+      } catch (error) {
+        replyText = error.message || 'I could not search the web right now.';
+        output.textContent = replyText;
+      }
+      playReply(replyText, language);
+      return;
+    }
 
     const screenRequest = Boolean(window.bridgeuxAgentEnabled?.()) || /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|button|form field|submit this)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर|क्लिक|टाइप|खोलो|खोलें|चुनो|चुनें/.test(text);
     if (screenRequest) {

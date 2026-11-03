@@ -31,6 +31,7 @@
       "voice.css",
       "speech-capture.js",
       "sign-vision.js",
+      "gesture-control.js",
       "!server.py",
       "!browser-extension/**/*",
       "!docs/**/*"
@@ -46,6 +47,17 @@
       {
         "from": "models/tts",
         "to": "models/tts",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "models/gesture/gesture_recognizer.task",
+        "to": "gesture/gesture_recognizer.task"
+      },
+      {
+        "from": "node_modules/@mediapipe/tasks-vision/wasm",
+        "to": "mediapipe/wasm",
         "filter": [
           "**/*"
         ]
@@ -69,6 +81,7 @@
     }
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.2.0",
     "piper-phonemize-node": "^1.5.9",
     "sherpa-onnx-node": "^2.0.1"
   }

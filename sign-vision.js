@@ -16,6 +16,7 @@
     video.style.display = 'none';
     $('#cameraPlaceholder').hidden = false;
     $('#startCamera').disabled = false;
+    $('#enableGestures').disabled = true;
     $('#translateSign').disabled = true;
     $('#stopCamera').disabled = true;
     $('#cameraStatus').textContent = 'Camera is off.';
@@ -31,6 +32,7 @@
       $('#cameraPlaceholder').hidden = true;
       $('#stopCamera').disabled = false;
       await video.play();
+      $('#enableGestures').disabled = false;
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');
       sampleTimer = setInterval(() => {
@@ -61,8 +63,10 @@
       const language = JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}').interfaceLanguage || 'English';
       const text = await window.bridgeux.translateSignVideo({ frames: frames.slice(-8), language });
       $('#signResult').textContent = text;
+      window.bridgeuxSpeak?.(text, language === 'हिन्दी' ? 'hi' : 'en');
       const uncertain = !text || /(?:could not|couldn't|unable to|cannot|can't).{0,60}(?:confident|interpret|recognize|see)|(?:not enough|no clear) visual evidence|(?:नहीं|नही).{0,40}(?:पहचान|समझ|देख|स्पष्ट|विश्वास)|(?:अनिश्चित|विश्वास से नहीं)/i.test(text);
       $('#typeSignText').disabled = uncertain;
+      $('#sendSignToAgent').disabled = uncertain;
       $('#cameraStatus').textContent = uncertain ? 'The model was unsure, so typing is disabled. Try signing closer to the camera in better light.' : 'Review the experimental interpretation carefully. It may be wrong.';
     } catch (error) {
       $('#signResult').textContent = error.message;
@@ -85,6 +89,18 @@
       $('#cameraStatus').textContent = `Could not type text: ${error.message}`;
       $('#typeSignText').disabled = false;
     }
+  };
+
+  $('#sendSignToAgent').onclick = async () => {
+    const goal = $('#signResult').textContent.trim();
+    if (!goal || $('#sendSignToAgent').disabled) return;
+    if (!window.bridgeuxAgentEnabled?.()) { $('#cameraStatus').textContent = 'Enable hands-free agent mode in Screen helper before asking it to act on a sign.'; return; }
+    $('#sendSignToAgent').disabled = true;
+    try {
+      const reply = await window.bridgeuxRunAgent(goal, JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}').interfaceLanguage === 'हिन्दी' ? 'hi' : 'en');
+      $('#cameraStatus').textContent = reply;
+      window.bridgeuxSpeak?.(reply, /[ऀ-ॿ]/.test(reply) ? 'hi' : 'en');
+    } finally { $('#sendSignToAgent').disabled = false; }
   };
 
   $('#openScreenHelper').onclick = () => document.querySelector('#screenHelper').scrollIntoView({ behavior: 'smooth' });

@@ -9,7 +9,7 @@ const blockedHindiTask = /(?:भेजें|भेजो|मिटाएं|ह
 const negatedHindiTask = /(?:मत|नहीं).{0,24}(?:क्लिक|दबाएं|दबाओ|टाइप|लिखें|खोलें|चुनें)/i;
 const riskyAgentTask = /\b(?:submit|send|purchase|buy|pay|delete|remove|transfer|share|post|publish|confirm|sign\s?in|log\s?in|log\s?out|change|update|install|uninstall|upload|subscribe|apply|order|book|cancel|accept|agree|password|payment|account)\b|(?:भेज|सबमिट|खरीद|भुगतान|मिटा|हट|पुष्टि|प्रकाशित|खाता|पासवर्ड|रद्द|अनुमति)/i;
 const riskyAgentTarget = /\b(?:submit|send|share|delete|remove|buy|purchase|pay|payment|confirm|publish|post|sign\s?in|log\s?in|log\s?out|save|cancel|accept|agree|apply|unfollow|unsubscribe|follow|join|leave|connect|subscribe|install|uninstall|upload|download|password|account)\b/i;
-const safeClickTarget = /\b(?:link|menu|tab|home|back|search|settings|help|open|expand|collapse|navigation)\b/i;
+const safeClickTarget = /\b(?:link|menu|tab|home|back|search|settings|help|open|expand|collapse|navigation|browser|application|app|address)\b/i;
 
 function isSafeActionTask(task) {
   return typeof task === 'string' && (clickTask.test(task.trim()) || typeTask.test(task.trim()) || pressTask.test(task.trim())) &&
@@ -57,4 +57,19 @@ function validateAgentAction(action, { width, height }, goal) {
   return null;
 }
 
-module.exports = { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction };
+function validateUiAgentAction(action, snapshot, goal) {
+  if (!isSafeAgentGoal(goal) || !action || typeof action !== 'object' || Array.isArray(action) ||
+      typeof action.reason !== 'string' || !action.reason.trim() || action.reason.length > 300) return null;
+  const element = snapshot?.elements?.find(item => item.id === action.elementId);
+  if (!element || element.password || !element.name || riskyAgentTarget.test(element.name)) return null;
+  const targetIsSafe = safeClickTarget.test(element.name) ||
+    (['Hyperlink', 'TabItem', 'MenuItem'].includes(element.role) && !riskyAgentTarget.test(element.name)) ||
+    (['ListItem', 'Button'].includes(element.role) && /\b(?:open|start|launch)\b.{0,30}\b(?:browser|brave|chrome|edge|firefox)\b/i.test(goal) && /\b(?:brave|chrome|edge|firefox|browser)\b/i.test(element.name));
+  if (action.type === 'invoke' && targetIsSafe && ['Button', 'Hyperlink', 'TabItem', 'MenuItem', 'ListItem', 'TreeItem'].includes(element.role)) return action;
+  if (action.type === 'setValue' && element.role === 'Edit' && /\b(?:search|address|url)\b/i.test(element.name) &&
+      typeof action.value === 'string' && action.value.trim().length > 0 && action.value.length <= 300 &&
+      goal.toLocaleLowerCase().includes(action.value.trim().toLocaleLowerCase())) return action;
+  return null;
+}
+
+module.exports = { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction };
