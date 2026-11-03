@@ -1,0 +1,42 @@
+BridgeUX product polish plan
+============================
+
+Goal
+Make BridgeUX feel like a deliberate, polished accessibility product and make
+the main tasks easy to find and complete for people who are new to computers.
+Keep the app calm, clear, and simple to operate.
+
+Principles
+- Keep the existing helpful tasks; improve how people find and use them.
+- Use familiar words, short instructions, clear button labels, and visible next steps.
+- Keep one clear primary action on each screen. Hide advanced setup until needed.
+- Use a consistent, restrained visual system: color, type, spacing, cards, and icons.
+- Design for keyboard, screen readers, zoom, high contrast, and touch-sized controls.
+- Avoid decorative effects, generic AI-style copy, clutter, and unnecessary animation.
+
+Work plan
+1. Review the complete first-run and everyday journeys: setup, voice help, screen
+   reading, browser control, forms, sign support, and settings. Note confusing or
+   duplicated controls before changing layouts.
+2. Set a small design system for colors, typography, spacing, borders, focus
+   states, buttons, fields, status messages, and responsive layouts.
+3. Simplify the home screen and navigation around the user's main goals. Make
+   first-run setup and the next useful action obvious without adding more steps.
+4. Redesign dense sections so instructions are brief, advanced options are
+   grouped, errors explain what to do next, and status changes are easy to notice.
+5. Create a clean, flat BridgeUX logo: distinctive at small sizes, recognizable
+   in one color, appropriate for an accessibility product, and usable in the
+   header, installer, taskbar, and favicon. Avoid 3D, gradients, and fine detail.
+6. Apply the system consistently across the app, then inspect key screens at
+   normal size, high zoom, keyboard-only use, and high contrast. Keep all existing
+   features reachable and verify the voice and screen-reader flows after layout
+   changes.
+
+Done when
+- A first-time user can identify how to get help and start a task without
+  interpreting technical setup language.
+- Core controls have clear names, readable labels, visible keyboard focus, and
+  sensible order; text remains usable when enlarged.
+- The logo and visual system feel consistent in the app and installer.
+- The interface contains no new workflow steps that do not help users complete
+  their task.
