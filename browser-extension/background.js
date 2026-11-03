@@ -7,7 +7,9 @@ const bridge = 'http://127.0.0.1:18765';
 
 async function verifyBridge(secret) {
   const response = await fetch(`${bridge}/v1/status`, { headers: { Authorization: `Bearer ${secret}` } });
-  return response.ok;
+  if (response.status === 401) throw Error('Pairing key rejected. Copy the current key from BridgeUX and try again.');
+  if (!response.ok) throw Error(`BridgeUX responded with HTTP ${response.status}. Restart BridgeUX and try again.`);
+  return true;
 }
 
 async function postResult(id, result) {
@@ -124,7 +126,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       chrome.storage.local.set({ token, connected: active });
       if (active) run();
       sendResponse({ connected: active, error: connected ? '' : 'BridgeUX rejected this pairing key or is not running.' });
-    }).catch(() => sendResponse({ connected: false, error: 'BridgeUX is not running. Open the desktop app and try again.' }));
+    }).catch(error => sendResponse({ connected: false, error: error.message || 'BridgeUX is not running. Open the desktop app and try again.' }));
     return true;
   } else if (message.type === 'disconnect') {
     active = false;
