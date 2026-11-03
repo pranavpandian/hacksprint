@@ -2,7 +2,7 @@
 
 ## Current Electron prototype
 
-- `electron/main.cjs` owns screen capture and narrow IPC handlers. It calls Ollama at `127.0.0.1` for the local Qwen2.5 assistant and Qwen3-VL screen understanding. Screen capture starts only after the user selects a display. A second model request is made only when the user's task explicitly asks for a supported safe action; click/type/key actions are validated and require user approval before execution. Submit, send, delete, purchase, payment, and similar tasks do not get action proposals.
+- `electron/main.cjs` owns screen capture and narrow IPC handlers. It calls Ollama at `127.0.0.1` for the local Qwen2.5 assistant and Qwen3-VL screen understanding. Optional hands-free mode plans one step from each selected-screen capture and rechecks the screen after it acts. The main process enforces a bounded action allowlist; submitting, sending, deleting, purchasing, changing settings, and credential entry are blocked.
 - `electron/preload.cjs` exposes the renderer to a limited, validated set of IPC functions. Electron runs with context isolation, sandboxing, disabled Node integration, and a restrictive content security policy.
 - `electron/speech-asr-worker.cjs` streams microphone samples into the local Nemotron 3.5 streaming model through sherpa-onnx. First-run setup requires accessibility support and English/Hindi language choices; the selected language is pinned to each speech stream and used for local replies.
 - `electron/speech-tts-worker.cjs` generates Hindi or English speech locally using Piper models through sherpa-onnx and the Piper phonemizer.
@@ -15,4 +15,4 @@ Large ONNX and Piper assets are excluded from Git and downloaded separately. Oll
 
 ## Known limits
 
-This is a prototype, not a general-purpose autonomous agent, certified interpreter, or screen-reader replacement. The general vision model can misinterpret signing; review translations before use. The user must explicitly approve typing translated text or any supported OS action.
+This is a prototype, not an unrestricted autonomous agent, certified interpreter, or screen-reader replacement. Hands-free mode is off by default, requires explicit enabling, and performs at most six low-risk navigation/search steps per spoken request. The general vision model can misinterpret screens and signing; review important results. Screen actions are never allowed to submit forms, send messages, delete, purchase, change settings, or enter credentials.

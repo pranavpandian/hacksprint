@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isSafeActionTask, validateSuggestedAction } = require('../electron/screen-actions.cjs');
+const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction } = require('../electron/screen-actions.cjs');
 
 const screen = { width: 1280, height: 720 };
 
@@ -36,4 +36,20 @@ test('key proposals are restricted to the approved key allowlist', () => {
   const action = { type: 'press', key: 'TAB', reason: 'Move to the next field' };
   assert.deepEqual(validateSuggestedAction(action, screen, 'Press Tab'), action);
   assert.equal(validateSuggestedAction({ ...action, key: 'ALT+F4' }, screen, 'Press Alt+F4'), null);
+});
+
+test('agent goals and autonomous actions stay within the low-risk allowlist', () => {
+  assert.equal(isSafeAgentGoal('Open the help menu'), true);
+  assert.equal(isSafeAgentGoal('Send this message'), false);
+  assert.equal(isSafeAgentGoal('Delete the file'), false);
+  const click = { type: 'click', x: 50, y: 60, target: 'Help menu', reason: 'Open help' };
+  assert.deepEqual(validateAgentAction(click, screen, 'Open the help menu'), click);
+  assert.equal(validateAgentAction({ ...click, target: 'Submit button' }, screen, 'Open the help menu'), null);
+  assert.equal(validateAgentAction({ ...click, x: 1280 }, screen, 'Open the help menu'), null);
+  const type = { type: 'type', target: 'Search field', text: 'cats', reason: 'Search for cats' };
+  assert.deepEqual(validateAgentAction(type, screen, 'Search the web for cats'), type);
+  assert.equal(validateAgentAction({ ...type, text: 'private data' }, screen, 'Search the web for cats'), null);
+  assert.equal(validateAgentAction({ type: 'press', key: 'ENTER', target: 'Form submit button', reason: 'Continue' }, screen, 'Open help'), null);
+  const enterSearch = { type: 'press', key: 'ENTER', target: 'Google search field', reason: 'Search' };
+  assert.deepEqual(validateAgentAction(enterSearch, screen, 'Search for cats'), enterSearch);
 });

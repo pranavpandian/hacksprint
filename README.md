@@ -2,7 +2,7 @@
 
 BridgeUX is a Windows desktop accessibility prototype that combines voice interaction, screen reading, and experimental ASL video-to-text. Its AI and speech inference run locally: prompts and short camera clips go to Ollama on `127.0.0.1`; audio and video are processed on the device.
 
-> **Current scope:** BridgeUX is a prototype, not a replacement for a screen reader, an interpreter, or an autonomous browser agent. ASL interpretation uses a general local vision model and may be wrong; it is not an ASL-trained or certified interpreter. The user reviews text before optionally typing it into the focused control.
+> **Current scope:** BridgeUX is an accessibility prototype, not a replacement for a screen reader or interpreter. Its optional hands-free agent can perform a short run of constrained navigation/search actions after the user enables it; it does not submit forms or perform sensitive actions. ASL interpretation uses a general local vision model and is not reliable or ASL-trained.
 
 ## What it includes
 
@@ -10,6 +10,7 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 - Local English and Hindi Piper neural voices for replies and read-aloud.
 - A local Qwen assistant for spoken/text help and Qwen vision model for selected screen captures, both served by Ollama.
 - User-started screen capture and live screen help. The live helper samples the selected display periodically and speaks summaries when requested.
+- Optional hands-free mode: after selecting a display, enabling the agent, and starting voice input, speak a goal and BridgeUX will inspect the screen and perform up to six low-risk navigation steps locally. Say “stop agent” or press **Stop agent** to interrupt. It will stop instead of submitting, sending, deleting, purchasing, changing settings, or entering credentials.
 - A user-started camera view that samples a few recent frames for experimental ASL video-to-text using the local Qwen3-VL model. Translation quality is not guaranteed.
 - Adjustable text size, contrast/theme, spacing, captions demo, and an optional Chrome helper.
 
@@ -173,7 +174,7 @@ The helper is optional and is not included in the Windows Electron installer. It
 - There are no cloud AI, cloud speech, or analytics APIs in the app. AI prompts and chosen screenshots are sent to the local Ollama service at `127.0.0.1` only.
 - The microphone is requested only for voice features. Audio is streamed to the local ASR model and is not saved by BridgeUX.
 - Camera access is optional and starts only when the user starts ASL interpretation. A rolling buffer of recent frames is sent only to local Ollama when the user requests interpretation; frames are not saved by BridgeUX.
-- Screen capture/live help is user-started. Captured frames are processed locally in memory; review [Privacy](PRIVACY.md) before using it with sensitive content.
+- Screen capture/live help and hands-free mode require selecting a display and enabling them. Captured frames are processed locally in memory; review [Privacy](PRIVACY.md) before using it with sensitive content.
 - Model quality is imperfect. Verify important information with its original source. BridgeUX does not invent personal facts or submit forms without an explicit user-approved action.
 
 ## Model and dependency licenses

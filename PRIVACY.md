@@ -8,7 +8,7 @@ On first launch, BridgeUX requires the user to choose at least one accessibility
 
 ## Screen sharing
 
-Screen capture is off until the user selects a display and starts a capture or live-help session. Live help samples the selected display periodically (about every five seconds while enabled). The app briefly minimizes during capture so it does not cover the content being read. Captured frames are held in memory and sent to the local Ollama service at `127.0.0.1`; BridgeUX does not save them to disk or send them to a hosted AI endpoint. Stop live help at any time.
+Screen capture is off until the user selects a display and starts a capture, live-help session, or explicitly enables hands-free mode. Hands-free mode uses each spoken goal with up to six screen snapshots to plan constrained navigation/search actions. It stops on unclear or sensitive requests and does not submit forms, send, delete, purchase, change settings, or enter credentials. Captured frames are held in memory and sent to the local Ollama service at `127.0.0.1`; BridgeUX does not save them to disk or send them to a hosted AI endpoint. Say “stop agent” or press **Stop agent** to interrupt.
 
 The content visible on a screen can be sensitive. Review the screen before starting capture or live help. Ollama, its model downloads, and any other installed software have their own behavior and terms outside BridgeUX.
 

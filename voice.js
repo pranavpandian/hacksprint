@@ -16,6 +16,7 @@
   let partialText = '';
   let replyText = '';
   let replyLanguage = 'en';
+  let agentRequestInFlight = false;
 
   let playbackContext = null;
   let playbackCursor = 0;
@@ -159,7 +160,14 @@
     const normalized = text.toLocaleLowerCase();
     replyLanguage = language;
 
+    if (/\b(?:stop|halt|cancel) (?:the )?(?:agent|automation|computer|pc)\b|एजेंट बंद/.test(normalized)) {
+      window.bridgeuxStopAgent?.();
+      replyText = language === 'hi' ? 'एजेंट रोक दिया।' : 'I stopped the agent.';
+      playReply(replyText, language);
+      return;
+    }
     if (/\b(stop listening|stop microphone|pause listening)\b|सुनना बंद/.test(normalized)) {
+      window.bridgeuxStopAgent?.();
       await stopListening('Voice listening stopped by request.');
       replyText = 'I stopped listening.';
       playReply(replyText, language);
@@ -169,8 +177,9 @@
       playReply(replyText || 'I do not have a previous reply yet.', language);
       return;
     }
+    if (agentRequestInFlight) return;
 
-    const screenRequest = /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|button|form field|submit this)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर|क्लिक|टाइप|खोलो|खोलें|चुनो|चुनें/.test(text);
+    const screenRequest = Boolean(window.bridgeuxAgentEnabled?.()) || /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|button|form field|submit this)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर|क्लिक|टाइप|खोलो|खोलें|चुनो|चुनें/.test(text);
     if (screenRequest) {
       $('#screenTask').value = text;
       $('#screenHelper').scrollIntoView({ behavior: 'smooth' });
@@ -183,6 +192,14 @@
       }
       localStorage.setItem('bridgeux-last-voice-language', language);
       speechStatus.textContent = 'Reading the screen and working on your request locally…';
+      if (window.bridgeuxAgentEnabled?.() && window.bridgeuxRunAgent) {
+        agentRequestInFlight = true;
+        try { replyText = await window.bridgeuxRunAgent(text, language); }
+        catch (error) { replyText = error.message || 'The local agent could not finish that request.'; }
+        finally { agentRequestInFlight = false; }
+        playReply(replyText, language);
+        return;
+      }
       window.bridgeuxScreenSpeakNext = true;
       $('#captureScreen').click();
       return;
