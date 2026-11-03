@@ -186,10 +186,25 @@
     }
     if (agentRequestInFlight) return;
 
-    if (/\b(?:open|launch|start) (?:my )?(?:default )?(?:web )?browser\b|\bopen brave\b/i.test(text)) {
+    const websiteRequest = text.match(/\b(?:open|visit|go to|navigate to)\s+(?:(?:the\s+)?(?:website|site)\s+)?(https?:\/\/[^\s]+|(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/[a-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*)?)/i);
+    const siteIntent = text.match(/\b(?:open|visit|go to|navigate to)\s+(?:(?:the\s+)?(?:website|site)\s+)?(.+?)(?:\s+(?:website|site))?[.!?]*$/i);
+    const browserOnly = /^\s*(?:please\s+)?(?:open|launch|start) (?:my )?(?:default )?(?:web )?browser\s*[.!?]*$|^\s*(?:please\s+)?open brave\s*[.!?]*$/i.test(text);
+    const siteAliases = { google: 'https://www.google.com', youtube: 'https://www.youtube.com', wikipedia: 'https://www.wikipedia.org', amazon: 'https://www.amazon.com', facebook: 'https://www.facebook.com', instagram: 'https://www.instagram.com', reddit: 'https://www.reddit.com', github: 'https://github.com', 'stack overflow': 'https://stackoverflow.com', bbc: 'https://www.bbc.com', brave: 'https://search.brave.com' };
+    const requestedTarget = (siteIntent?.[1] || '').replace(/\s+(?:website|site)$/i, '').trim();
+    const siteAlias = Object.entries(siteAliases).find(([name]) => new RegExp(`^${name.replace(' ', '\\s+')}$`, 'i').test(requestedTarget));
+    const namedWebsite = Boolean(siteIntent && (/\b(?:website|site)\b/i.test(siteIntent[0]) || (requestedTarget.length <= 50 && !/\b(?:and|then|to|for|with|click|search|find|read|tell)\b/i.test(requestedTarget))));
+    const afterWebsiteUrl = websiteRequest ? text.slice(websiteRequest.index + websiteRequest[0].length) : '';
+    const websiteWithFollowup = Boolean((websiteRequest || siteIntent) && /\b(?:and then|then|and|to|so that)\b/i.test(afterWebsiteUrl || requestedTarget));
+    if ((websiteRequest && !websiteWithFollowup) || siteAlias || (namedWebsite && !websiteWithFollowup) || browserOnly) {
       try {
-        await window.bridgeux.openBrowser();
-        replyText = language === 'hi' ? 'आपका डिफ़ॉल्ट ब्राउज़र खोल दिया।' : 'I opened your default browser.';
+        let url = websiteRequest?.[1] || siteAlias?.[1] || (browserOnly ? 'https://www.google.com' : '');
+        if (!url && requestedTarget) {
+          const found = await window.bridgeux.searchWeb({ query: `${requestedTarget} official website`, language: getVoiceLanguage() === 'hi' ? 'हिन्दी' : 'English' });
+          url = found.sources[0]?.url;
+        }
+        if (!url) throw new Error('I could not find a website for that name. Try saying its web address.');
+        const result = await window.bridgeux.openWebsite(url);
+        replyText = language === 'hi' ? `वेबसाइट खोल दी: ${result.url}` : `Opened ${result.url}`;
       } catch (error) {
         replyText = error.message || 'I could not open your default browser.';
       }
@@ -198,7 +213,7 @@
     }
 
     const needsWebSearch = /\b(?:flights?|airfares?|weather|news|today|latest|current price|search (?:the )?web|search (?:the )?internet|look up (?:online|on the internet))\b/i.test(text);
-    if (needsWebSearch && window.bridgeux?.searchWeb) {
+    if (needsWebSearch && !websiteWithFollowup && window.bridgeux?.searchWeb) {
       const output = $('#assistAnswer');
       output.hidden = false;
       output.textContent = 'Searching the web for this question…';
@@ -215,24 +230,22 @@
       return;
     }
 
-    const screenRequest = Boolean(window.bridgeuxAgentEnabled?.()) || /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|button|form field|submit this)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर|क्लिक|टाइप|खोलो|खोलें|चुनो|चुनें/.test(text);
+    const handsFree = Boolean(window.bridgeuxAgentEnabled?.());
+    const screenRequest = handsFree || websiteWithFollowup || /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|open|visit|go to|navigate to|button|form field|submit this)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर|क्लिक|टाइप|खोलो|खोलें|चुनो|चुनें/.test(text);
     if (screenRequest) {
       $('#screenTask').value = text;
       $('#screenHelper').scrollIntoView({ behavior: 'smooth' });
       const screenChoice = $('#screenChoice');
-      if (!screenChoice.value) {
-        replyText = 'Choose the display you want me to read once. After that, you can ask me about it by voice.';
-        playReply(replyText, language);
-        speechStatus.textContent = 'Select a screen once, then ask for screen help by voice.';
-        return;
-      }
       localStorage.setItem('bridgeux-last-voice-language', language);
       speechStatus.textContent = 'Reading the screen and working on your request locally…';
-      if (window.bridgeuxAgentEnabled?.() && window.bridgeuxRunAgent) {
+      if (window.bridgeuxRunAgent) {
         agentRequestInFlight = true;
-        try { replyText = await window.bridgeuxRunAgent(text, language); }
+        try {
+          if (!handsFree) await window.bridgeuxSetAgentMode(true, true);
+          replyText = await window.bridgeuxRunAgent(text, language);
+        }
         catch (error) { replyText = error.message || 'The local agent could not finish that request.'; }
-        finally { agentRequestInFlight = false; }
+        finally { agentRequestInFlight = false; await window.bridgeuxFinishOneShot?.(); }
         playReply(replyText, language);
         return;
       }

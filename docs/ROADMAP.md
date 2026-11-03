@@ -6,7 +6,7 @@
 - User-started Hindi/English voice input and local read-aloud using separately installed speech assets.
 - Local Qwen assistant for explanations and drafting guidance.
 - User-selected, one-shot or periodic screen capture with local Qwen3-VL descriptions. A requested safe action can be suggested for explicit approval.
-- Opt-in, voice-driven agent for up to six constrained screen navigation/search actions per request.
+- Voice-driven one-shot agent for explicit PC tasks; opt-in persistent mode supports up to 24 constrained screen navigation/search actions per request.
 - An experimental ASL video-to-text demo using a general vision model. This is not a trained sign-language translator.
 - An optional Chrome extension for user-invoked page readability through the local Python helper.
 

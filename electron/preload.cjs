@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld('bridgeux', Object.freeze({
   analyzeUiScreen: request => ipcRenderer.invoke('bridgeux:analyze-ui', request),
   performUiAction: request => ipcRenderer.invoke('bridgeux:ui-action', request),
   searchWeb: request => ipcRenderer.invoke('bridgeux:web-search', request),
-  openBrowser: () => ipcRenderer.invoke('bridgeux:open-browser'),
+  openWebsite: url => ipcRenderer.invoke('bridgeux:open-website', url),
   getGestureAssets: () => ipcRenderer.invoke('bridgeux:gesture-assets'),
   setGestureMode: enabled => ipcRenderer.invoke('bridgeux:gesture-mode', enabled),
   movePointer: request => ipcRenderer.invoke('bridgeux:move-pointer', request),

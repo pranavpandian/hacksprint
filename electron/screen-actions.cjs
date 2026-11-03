@@ -7,8 +7,8 @@ const typeTask = /^(?:please\s+)?(?:type|enter|fill)\b|^(?:कृपया\s*)?(
 const pressTask = /^(?:please\s+)?press\b|^(?:कृपया\s*)?कुंजी\s+दबाएं/i;
 const blockedHindiTask = /(?:भेजें|भेजो|मिटाएं|हटाएं|खरीदें|भुगतान|सबमिट|पुष्टि|पोस्ट)/i;
 const negatedHindiTask = /(?:मत|नहीं).{0,24}(?:क्लिक|दबाएं|दबाओ|टाइप|लिखें|खोलें|चुनें)/i;
-const riskyAgentTask = /\b(?:submit|send|purchase|buy|pay|delete|remove|transfer|share|post|publish|confirm|sign\s?in|log\s?in|log\s?out|change|update|install|uninstall|upload|subscribe|apply|order|book|cancel|accept|agree|password|payment|account)\b|(?:भेज|सबमिट|खरीद|भुगतान|मिटा|हट|पुष्टि|प्रकाशित|खाता|पासवर्ड|रद्द|अनुमति)/i;
-const riskyAgentTarget = /\b(?:submit|send|share|delete|remove|buy|purchase|pay|payment|confirm|publish|post|sign\s?in|log\s?in|log\s?out|save|cancel|accept|agree|apply|unfollow|unsubscribe|follow|join|leave|connect|subscribe|install|uninstall|upload|download|password|account)\b/i;
+const riskyAgentTask = /\b(?:submit|send|purchase|buy|pay|delete|remove|transfer|share|post|publish|confirm|sign\s?in|log\s?in|log\s?out|change|update|install|uninstall|upload|subscribe|apply|order|book|cancel|accept|agree|password|payment|account|checkout|cart|reserve|register|add to cart)\b|(?:भेज|सबमिट|खरीद|भुगतान|मिटा|हट|पुष्टि|प्रकाशित|खाता|पासवर्ड|रद्द|अनुमति)/i;
+const riskyAgentTarget = /\b(?:submit|send|share|delete|remove|buy|purchase|pay|payment|confirm|publish|post|sign\s?in|log\s?in|log\s?out|save|cancel|accept|agree|apply|unfollow|unsubscribe|follow|join|leave|connect|subscribe|install|uninstall|upload|download|password|account|checkout|cart|reserve|register|add to cart)\b/i;
 const safeClickTarget = /\b(?:link|menu|tab|home|back|search|settings|help|open|expand|collapse|navigation|browser|application|app|address)\b/i;
 
 function isSafeActionTask(task) {

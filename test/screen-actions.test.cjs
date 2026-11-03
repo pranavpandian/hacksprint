@@ -42,6 +42,7 @@ test('agent goals and autonomous actions stay within the low-risk allowlist', ()
   assert.equal(isSafeAgentGoal('Open the help menu'), true);
   assert.equal(isSafeAgentGoal('Send this message'), false);
   assert.equal(isSafeAgentGoal('Delete the file'), false);
+  assert.equal(isSafeAgentGoal('Add this item to my cart'), false);
   const click = { type: 'click', x: 50, y: 60, target: 'Help menu', reason: 'Open help' };
   assert.deepEqual(validateAgentAction(click, screen, 'Open the help menu'), click);
   assert.equal(validateAgentAction({ ...click, target: 'Submit button' }, screen, 'Open the help menu'), null);

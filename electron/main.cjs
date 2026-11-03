@@ -9,6 +9,7 @@ const { Worker } = require('node:worker_threads');
 const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction } = require('./screen-actions.cjs');
 const windowsUIA = require('./windows-uia.cjs');
 const gesturePointer = require('./gesture-pointer.cjs');
+const { normalizeWebsiteUrl } = require('./browser-navigation.cjs');
 
 
 const MODEL = 'hf.co/Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M';
@@ -247,7 +248,7 @@ async function planAgentStep(payload) {
   const validImage = typeof payload?.image === 'string' && payload.image.length <= 12_000_000 && /^[A-Za-z0-9+/]+={0,2}$/.test(payload.image) &&
     Number.isInteger(payload.width) && Number.isInteger(payload.height) && payload.width >= 100 && payload.height >= 100 && payload.width <= 8000 && payload.height <= 8000;
   if (!payload || !isSafeAgentGoal(payload.goal) || (!useUi && !validImage) || !['English', 'हिन्दी'].includes(payload.language) ||
-      !Array.isArray(payload.history) || payload.history.length > 6) {
+      !Array.isArray(payload.history) || payload.history.length > 24) {
     throw new Error('This request is outside the hands-free agent’s safe action limits.');
   }
   await ensureOllama();
@@ -411,9 +412,10 @@ async function searchWeb(payload) {
   return { answer: answer || 'I found web results, but could not summarize them. Open a source link to review.', sources: results.map(({ title, url }) => ({ title, url })) };
 }
 
-async function openDefaultBrowser() {
-  await shell.openExternal('https://www.google.com');
-  return { opened: true };
+async function openWebsite(value) {
+  const url = normalizeWebsiteUrl(value);
+  await shell.openExternal(url);
+  return { opened: true, url };
 }
 
 function gestureAssets() {
@@ -480,7 +482,7 @@ ipcMain.handle('bridgeux:ui-snapshot', () => getUiSnapshot());
 ipcMain.handle('bridgeux:analyze-ui', (_event, payload) => analyzeUiScreen(payload));
 ipcMain.handle('bridgeux:ui-action', (_event, payload) => performUiAction(payload));
 ipcMain.handle('bridgeux:web-search', (_event, payload) => searchWeb(payload));
-ipcMain.handle('bridgeux:open-browser', () => openDefaultBrowser());
+ipcMain.handle('bridgeux:open-website', (_event, url) => openWebsite(url));
 ipcMain.handle('bridgeux:gesture-assets', () => gestureAssets());
 ipcMain.handle('bridgeux:gesture-mode', async (_event, enabled) => {
   if (enabled === true) { await gesturePointer.start(); gestureEnabled = true; }

@@ -2,7 +2,7 @@
 
 ## Product
 
-BridgeUX is a Windows Electron accessibility prototype. It provides local Hindi/English speech input and read-aloud, an Ollama text assistant, user-started screen reading and approval-gated PC actions, and an experimental ASL video-to-text demo. It is not a screen-reader replacement or certified interpreter. UI Automation reads accessible active-window content; visual screenshots are the fallback, and the hands-free agent is limited to six safe navigation steps.
+BridgeUX is a Windows Electron accessibility prototype. It provides local Hindi/English speech input and read-aloud, an Ollama text assistant, user-started screen reading and a voice-driven PC agent, and an experimental ASL video-to-text demo. It is not a screen-reader replacement or certified interpreter. UI Automation reads accessible active-window content; visual screenshots are the fallback. Explicit spoken PC tasks run one-shot without a screen selection when UI Automation works; the persistent agent remains opt-in and supports up to 24 safe navigation steps.
 
 ## Run and build
 
@@ -19,6 +19,7 @@ BridgeUX is a Windows Electron accessibility prototype. It provides local Hindi/
 - `app.js`: preferences, captions demo, read-aloud, and local page checks.
 - `local.js`: local assistant and model status.
 - `local-screen.js`: display selection, screen capture, live help, and approval flow.
+- `electron/browser-navigation.cjs`: validates web URLs before opening them in the system browser.
 - `sign-vision.js`: user-started camera frame sampling, experimental local ASL interpretation, and reviewed text entry.
 - `voice.js`, `speech-capture.js`: speech UI and microphone capture.
 - `electron/main.cjs`, `electron/preload.cjs`: local inference, capture, workers, and validated IPC.
@@ -29,7 +30,7 @@ BridgeUX is a Windows Electron accessibility prototype. It provides local Hindi/
 
 - Keep AI inference local. Explicit web searches may send only the spoken query to DuckDuckGo; never send screen contents, telemetry, or audio to a hosted service.
 - Ask the user to start microphone, camera, or screen capture. Never save those recordings or snapshots.
-- Keep desktop actions narrow and reversible. Hands-free mode requires explicit opt-in; ask for exact form answers and never submit, send, delete, purchase, or pay for a user.
+- Keep desktop actions narrow and reversible. Explicit spoken PC tasks may run one-shot; persistent hands-free mode requires opt-in. Ask for missing form details and never submit, send, delete, purchase, or pay for a user.
 - Qwen3-VL is a general vision model. The ASL feature is experimental and must not be described as accurate full ASL translation.
 - Do not claim BridgeUX provides a complete screen reader or WCAG conformance. Test with assistive-technology users before making accessibility claims.
 - Keep model licenses/provenance documented and do not commit model weights or private recordings.
