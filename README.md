@@ -2,7 +2,7 @@
 
 BridgeUX is a Windows desktop accessibility prototype that combines voice interaction, screen reading, and experimental ASL video-to-text. Its AI and speech inference run locally: prompts and short camera clips go to Ollama on `127.0.0.1`; audio and video are processed on the device.
 
-> **Current scope:** BridgeUX is an accessibility prototype, not a replacement for a screen reader or interpreter. The agent reads the active app's Windows accessibility tree on each action, avoiding screenshots when the app exposes page content. It can submit a Google Form only when the user explicitly asks. ASL interpretation uses a general local vision model and is not reliable or ASL-trained.
+> **Current scope:** BridgeUX is an accessibility prototype, not a replacement for a screen reader or interpreter. The agent reads the active app's Windows accessibility tree on each action, avoiding screenshots when the app exposes page content. It can submit a Google Form only when the user explicitly asks. The ASL feature classifies basic static fingerspelled letters and digits locally; it does not translate ASL words or sentences.
 
 ## What it includes
 
@@ -13,7 +13,7 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 - Explicit spoken PC tasks start a one-shot agent automatically, with no display selection when Windows exposes accessible controls. For longer tasks, enable hands-free mode once; each step reads the current browser/app accessibility tree. It asks only for missing form values and can submit a Google Form after an explicit request. Say “stop agent” or press **Stop agent** to interrupt.
 - Voice commands such as “open example.com”, “visit Wikipedia”, or “go to the NASA website” open that site in the default browser. It resolves named sites with web search and supports HTTP/HTTPS links.
 - Spoken web searches for flights, weather, news, and other current information. BridgeUX sends the spoken search query to DuckDuckGo, then summarizes result snippets locally and displays source links. Check provider pages for live prices and availability.
-- A user-started camera view that samples a few recent frames for experimental ASL video-to-text using the local Qwen3-VL model, with spoken replies. Optional MediaPipe hand controls move the pointer, pinch to click, and use a V-sign swipe to scroll. ASL translation quality is not guaranteed; the model is not ASL-trained.
+- A user-started camera view with a compact ASL-trained landmark model for static A–Z and 0–9 handshapes. It spells stable characters, can speak them, and can type the reviewed sequence. J/Z motion and ASL grammar/sentence translation are not supported. Optional MediaPipe hand controls move the pointer, pinch to click, and use a V-sign swipe to scroll; GPU delegate is used when available.
 - Adjustable text size, contrast/theme, spacing, captions demo, and an optional Chrome helper.
 
 See [Privacy](PRIVACY.md), [Security](SECURITY.md), [architecture](docs/ARCHITECTURE.md), and [model details](models/README.md) for limits and implementation notes.
@@ -52,7 +52,7 @@ These are practical recommendations, not a hardware compatibility guarantee. Per
    ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
    ```
 
-5. Start BridgeUX and complete the required support and preferred-language setup. Choose whether to enable the microphone when prompted; speech follows the selected English or Hindi language. Select a display to analyze screen content. Camera permission is only needed for the experimental ASL demo.
+5. Start BridgeUX and complete the required support and preferred-language setup. Choose whether to enable the microphone when prompted; speech follows the selected English or Hindi language. Select a display to analyze screen content. Camera permission is only needed for ASL spelling or hand controls.
 
 If the repository has no published GitHub Release yet, use Option B to build the app, or ask the project maintainer for the installer.
 
@@ -159,7 +159,7 @@ The x64 NSIS installer is written to `release/`. The installer includes the loca
 ## Connect the browser agent
 
 1. In Chrome or Brave, open Extensions and enable Developer mode.
-2. Choose Load unpacked and select the `browser-extension` path shown in BridgeUX Screen helper.
+2. Choose Load unpacked and select the `browser-extension` folder shown in BridgeUX Screen helper. Do not open `popup.html` as a normal browser file; the popup only works as an installed extension.
 3. Copy the pairing key from BridgeUX, open the BridgeUX Browser Agent extension popup, and choose Connect. Wait for the popup to confirm the local connection. After installing an updated BridgeUX build, use Reload on the extension's card in the browser Extensions page before reconnecting.
 
 The browser extension reads the active tab page structure locally when BridgeUX requests it. It can click links/buttons and fill visible non-password fields. Do not connect on pages you do not want the local agent to control.

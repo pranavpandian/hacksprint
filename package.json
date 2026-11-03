@@ -61,9 +61,20 @@
         "to": "gesture/gesture_recognizer.task"
       },
       {
+        "from": "models/sign",
+        "to": "models/sign",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm",
+        "to": "onnxruntime/ort-wasm-simd-threaded.wasm"
+      },
+      {
         "from": "browser-extension",
         "to": "browser-extension",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "node_modules/@mediapipe/tasks-vision/wasm",
@@ -93,6 +104,7 @@
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^1.2.0",
+    "onnxruntime-web": "^1.31.1",
     "piper-phonemize-node": "^1.5.9",
     "sherpa-onnx-node": "^2.0.1"
   }

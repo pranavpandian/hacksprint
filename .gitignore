@@ -10,3 +10,5 @@ OllamaSetup.exe
 .bridgeux-runtime-check/
 models/**
 !models/README.md
+!models/sign/
+!models/sign/**

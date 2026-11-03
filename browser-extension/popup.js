@@ -5,12 +5,20 @@ const result = $('#result');
 const pairing = $('#pairingKey');
 
 async function refreshConnection() {
+  if (!globalThis.chrome?.runtime?.id) {
+    connection.textContent = 'This is a file preview, not the installed extension. Open brave://extensions, load the browser-extension folder, then use its toolbar button.';
+    connection.dataset.connected = 'false';
+    $('#connect').disabled = true;
+    $('#disconnect').disabled = true;
+    return;
+  }
   const state = await chrome.runtime.sendMessage({ type: 'status' }).catch(() => ({ connected: false }));
   connection.textContent = state?.connected ? 'Connected to BridgeUX on this computer.' : 'Not connected. Open BridgeUX and pair this extension.';
   connection.dataset.connected = String(Boolean(state?.connected));
 }
 
 $('#connect').addEventListener('click', async () => {
+  if (!globalThis.chrome?.runtime?.id) { await refreshConnection(); return; }
   const token = pairing.value.trim();
   if (!token) { connection.textContent = 'Paste the pairing key shown in BridgeUX first.'; return; }
   $('#connect').disabled = true;

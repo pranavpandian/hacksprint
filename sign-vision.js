@@ -16,6 +16,8 @@
     video.style.display = 'none';
     $('#cameraPlaceholder').hidden = false;
     $('#startCamera').disabled = false;
+    $('#startAslRecognition').disabled = true;
+    $('#stopAslRecognition').disabled = true;
     $('#enableGestures').disabled = true;
     $('#translateSign').disabled = true;
     $('#stopCamera').disabled = true;
@@ -26,12 +28,13 @@
     $('#startCamera').disabled = true;
     $('#cameraStatus').textContent = 'Starting camera…';
     try {
-      camera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 1280, height: 720 }, audio: false });
+      camera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
       video.srcObject = camera;
       video.style.display = 'block';
       $('#cameraPlaceholder').hidden = true;
       $('#stopCamera').disabled = false;
       await video.play();
+      $('#startAslRecognition').disabled = false;
       $('#enableGestures').disabled = false;
       const canvas = document.createElement('canvas');
       const context = canvas.getContext('2d');

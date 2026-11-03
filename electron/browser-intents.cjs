@@ -6,8 +6,20 @@ function firstVisibleYoutubeVideo(goal, snapshot) {
     /https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w-]+/i.test(item.value || '')) || null;
 }
 
+function youtubeMediaControl(intent, snapshot) {
+  if (!/youtube/i.test(snapshot?.windowTitle || '')) return null;
+  const names = {
+    pause: /\b(?:pause|pause playback)\b/i,
+    play: /\b(?:play|resume)\b/i,
+    mute: /\b(?:mute|mute volume)\b/i,
+    unmute: /\b(?:unmute|unmute volume)\b/i
+  };
+  return snapshot?.elements?.find(item => item.role === 'Button' && names[intent]?.test(item.name || '')) || null;
+}
+
 function browserMediaIntent(goal) {
   if (typeof goal !== 'string') return null;
+  if (/\b(?:first|top)\s+(?:video|result)\b/i.test(goal)) return null;
   if (/\b(?:pause|stop)\b.{0,35}\b(?:video|playback|youtube|it)\b|\b(?:pause|stop)\s+(?:it|the video)\b/i.test(goal)) return 'pause';
   if (/\b(?:resume|unpause|play)\b.{0,35}\b(?:video|playback|youtube|it)\b|\b(?:resume|unpause|play)\s+(?:it|the video)\b/i.test(goal)) return 'play';
   if (/\b(?:mute|silence)\b.{0,35}\b(?:video|youtube|audio|it)\b|\bmute\s+(?:it|the video)\b/i.test(goal)) return 'mute';
@@ -24,4 +36,4 @@ function routeAgentTask(goal, snapshot) {
   return { agent: 'local-agent' };
 }
 
-module.exports = { firstVisibleYoutubeVideo, browserMediaIntent, routeAgentTask };
+module.exports = { firstVisibleYoutubeVideo, youtubeMediaControl, browserMediaIntent, routeAgentTask };

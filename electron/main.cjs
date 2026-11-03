@@ -10,7 +10,7 @@ const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgen
 const windowsUIA = require('./windows-uia.cjs');
 const gesturePointer = require('./gesture-pointer.cjs');
 const { normalizeWebsiteUrl } = require('./browser-navigation.cjs');
-const { firstVisibleYoutubeVideo, browserMediaIntent, routeAgentTask } = require('./browser-intents.cjs');
+const { firstVisibleYoutubeVideo, youtubeMediaControl, browserMediaIntent, routeAgentTask } = require('./browser-intents.cjs');
 const { createBrowserBridge } = require('./browser-bridge.cjs');
 
 
@@ -395,7 +395,7 @@ async function getUiSnapshot() {
   const firstVideoLinks = elements.filter(item => item.role === 'Hyperlink' && /youtube\.com\/watch\?v=/i.test(item.value || ''));
   const prioritized = [...firstVideoLinks, ...elements.filter(item => !firstVideoLinks.includes(item))].slice(0, 500);
   const address = elements.find(item => item.role === 'Edit' && /address and search bar|address bar/i.test(item.name));
-  lastUiSnapshot = { snapshotId: randomUUID(), windowTitle: String(snapshot.windowTitle || '').slice(0, 300), url: String(address?.value || '').slice(0, 1000), elements: prioritized };
+  lastUiSnapshot = { snapshotId: randomUUID(), windowTitle: String(snapshot.windowTitle || '').slice(0, 300), url: String(address?.value || '').slice(0, 1000), source: 'windows-uia', elements: prioritized };
   return lastUiSnapshot;
 }
 
@@ -571,18 +571,37 @@ ipcMain.handle('bridgeux:browser-media', async (_event, payload) => {
   return result;
 });
 ipcMain.handle('bridgeux:agent-step', async (_event, payload) => {
+  if (/\b(?:first|top)\s+(?:video|result)\b/i.test(payload?.goal || '')) {
+    if (!agentEnabled) throw new Error('Turn on hands-free agent mode first.');
+    const snapshot = await getUiSnapshot();
+    const firstVideo = firstVisibleYoutubeVideo(payload.goal, snapshot);
+    if (!firstVideo || !validateUiAgentAction({ type: 'invoke', elementId: firstVideo.id, reason: 'Open the first visible YouTube video.' }, snapshot, payload.goal)) {
+      throw new Error('I could not identify the first visible YouTube video. Open YouTube search results and try again.');
+    }
+    if (snapshot.source === 'browser') {
+      const result = await browserBridge.request('action', { elementId: firstVideo.id, action: { type: 'invoke' } });
+      if (result?.error) throw new Error(result.error);
+    } else await performUiAction({ goal: payload.goal, snapshotId: snapshot.snapshotId, action: { type: 'invoke', elementId: firstVideo.id, reason: 'Open the first visible YouTube video.' } });
+    return { status: 'done', mode: 'browser', message: `Opened the first video shown: ${firstVideo.name}.` };
+  }
   const intent = browserMediaIntent(payload?.goal);
   if (!intent) return planAgentStep(payload);
   if (!agentEnabled) throw new Error('Turn on hands-free agent mode first.');
   const snapshot = await getUiSnapshot();
   let isYoutube = false;
   try { isYoutube = /(?:^|\.)youtube\.com$/i.test(new URL(snapshot?.url).hostname); } catch {}
-  if (!snapshot || snapshot.source !== 'browser' || !snapshot.media?.present || !isYoutube) {
-    throw new Error('To control YouTube playback, connect the BridgeUX browser extension and leave the playing video tab active.');
+  isYoutube ||= /youtube/i.test(snapshot?.windowTitle || '');
+  if (snapshot?.source === 'browser' && snapshot.media?.present && isYoutube) {
+    const result = await browserBridge.request('action', { action: { type: 'media', intent } });
+    if (result?.error) throw new Error(result.error);
+    return { status: 'done', mode: 'browser', message: result?.message || 'Done.' };
   }
-  const result = await browserBridge.request('action', { action: { type: 'media', intent } });
-  if (result?.error) throw new Error(result.error);
-  return { status: 'done', mode: 'browser', message: result?.message || 'Done.' };
+  const control = youtubeMediaControl(intent, snapshot);
+  if (snapshot?.source === 'windows-uia' && control) {
+    await performUiAction({ goal: payload.goal, snapshotId: snapshot.snapshotId, action: { type: 'invoke', elementId: control.id, reason: `Use the visible YouTube ${intent} control.` } });
+    return { status: 'done', mode: 'windows-uia', message: intent === 'pause' ? 'Paused the YouTube video.' : intent === 'play' ? 'Resumed the YouTube video.' : intent === 'mute' ? 'Muted the YouTube video.' : 'Turned YouTube sound back on.' };
+  }
+  throw new Error('I could not read a YouTube media control. Keep the video tab active; for more reliable control, install and pair the BridgeUX browser extension.');
 });
 ipcMain.handle('bridgeux:agent-status', (_event, payload) => {
   const active = payload?.active === true;
@@ -604,6 +623,12 @@ ipcMain.handle('bridgeux:ui-action', (_event, payload) => performUiAction(payloa
 ipcMain.handle('bridgeux:web-search', (_event, payload) => searchWeb(payload));
 ipcMain.handle('bridgeux:open-website', (_event, url) => openWebsite(url));
 ipcMain.handle('bridgeux:gesture-assets', () => gestureAssets());
+ipcMain.handle('bridgeux:sign-assets', () => {
+  const modelDir = app.isPackaged ? path.join(process.resourcesPath, 'models', 'sign') : path.join(__dirname, '..', 'models', 'sign');
+  const runtimeDir = app.isPackaged ? path.join(process.resourcesPath, 'onnxruntime') : path.join(__dirname, '..', 'node_modules', 'onnxruntime-web', 'dist');
+  const taskPath = app.isPackaged ? path.join(process.resourcesPath, 'gesture', 'gesture_recognizer.task') : path.join(__dirname, '..', 'models', 'gesture', 'gesture_recognizer.task');
+  return { model: new Uint8Array(require('node:fs').readFileSync(path.join(modelDir, 'mlp_asl.onnx'))), labels: require('node:fs').readFileSync(path.join(modelDir, 'mlp_classes.json'), 'utf8'), handTaskUrl: pathToFileURL(taskPath).href, wasmUrl: pathToFileURL(`${app.isPackaged ? path.join(process.resourcesPath, 'mediapipe', 'wasm') : path.join(__dirname, '..', 'node_modules', '@mediapipe', 'tasks-vision', 'wasm')}${path.sep}`).href, ortWasmUrl: pathToFileURL(path.join(runtimeDir, 'ort-wasm-simd-threaded.wasm')).href };
+});
 ipcMain.handle('bridgeux:gesture-mode', async (_event, enabled) => {
   if (enabled === true) { await gesturePointer.start(); gestureEnabled = true; }
   else { gestureEnabled = false; gesturePointer.stop(); }

@@ -21,11 +21,33 @@
   let playbackContext = null;
   let playbackCursor = 0;
   let activeTtsId = 0;
+  let activeTtsText = '';
+  let activeTtsLanguage = 'en';
   let activeSources = 0;
   let ttsFinished = false;
   let micPausedForReply = false;
   let micResumeInFlight = false;
   const activeAudioNodes = new Set();
+
+  function speakWithSystemVoice(text = activeTtsText, language = activeTtsLanguage) {
+    if (!text || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return false;
+    try {
+      for (const node of activeAudioNodes) { try { node.stop(); } catch {} }
+      activeAudioNodes.clear();
+      activeSources = 0;
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language === 'hi' ? 'hi-IN' : 'en-US';
+      const voice = speechSynthesis.getVoices().find(item => item.lang.toLowerCase().startsWith(language === 'hi' ? 'hi' : 'en'));
+      if (voice) utterance.voice = voice;
+      utterance.onend = () => { ttsFinished = true; maybeResumeMic(); };
+      utterance.onerror = () => { ttsFinished = true; maybeResumeMic(); };
+      ttsFinished = false;
+      speechSynthesis.speak(utterance);
+      speechStatus.textContent = 'Using the Windows voice while the local voice recovers.';
+      return true;
+    } catch { return false; }
+  }
 
   function getVoiceLanguage() {
     try { return JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}').interfaceLanguage === 'हिन्दी' ? 'hi' : 'en'; }
@@ -71,6 +93,8 @@
 
     activeTtsId += 1;
     const requestId = activeTtsId;
+    activeTtsText = String(text).slice(0, 4000);
+    activeTtsLanguage = language;
     for (const node of activeAudioNodes) {
       try { node.stop(); } catch {}
     }
@@ -84,12 +108,13 @@
       if (!playbackContext) playbackContext = new AudioContext();
       if (playbackContext.state === 'suspended') await playbackContext.resume();
       await window.bridgeux.speakText({
-        text: String(text).slice(0, 4000),
+        text: activeTtsText,
         language,
         requestId
       });
     } catch (error) {
       speechStatus.textContent = `Local voice could not start: ${error.message}`;
+      if (speakWithSystemVoice()) return;
       ttsFinished = true;
       await maybeResumeMic();
     }
@@ -333,7 +358,8 @@
   window.bridgeux.onTtsAudio(message => {
     if (message.requestId != null && message.requestId !== activeTtsId) return;
     if (message.type === 'error') {
-      speechStatus.textContent = `Neural voice error: ${message.message}`;
+      speechStatus.textContent = 'The local voice failed. Trying the Windows voice instead.';
+      if (speakWithSystemVoice()) return;
       ttsFinished = true;
       maybeResumeMic();
       return;

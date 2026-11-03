@@ -84,7 +84,7 @@ test('an explicit Google Forms request can submit only the actual Google Forms S
 });
 
 test('first-video shortcut selects the first visible YouTube watch link from the active page tree', () => {
-  const { firstVisibleYoutubeVideo, browserMediaIntent, routeAgentTask } = require('../electron/browser-intents.cjs');
+  const { firstVisibleYoutubeVideo, youtubeMediaControl, browserMediaIntent, routeAgentTask } = require('../electron/browser-intents.cjs');
   const first = { id: 'e1', name: 'Video one', role: 'Hyperlink', value: 'https://www.youtube.com/watch?v=abc123' };
   const second = { id: 'e2', name: 'Video two', role: 'Hyperlink', value: 'https://www.youtube.com/watch?v=def456' };
   assert.equal(firstVisibleYoutubeVideo('Open the first video', { windowTitle: 'YouTube - Brave', elements: [first, second] }), first);
@@ -94,7 +94,9 @@ test('first-video shortcut selects the first visible YouTube watch link from the
   assert.equal(browserMediaIntent('Resume it'), 'play');
   assert.equal(browserMediaIntent('Mute the YouTube video'), 'mute');
   assert.equal(browserMediaIntent('Unmute it'), 'unmute');
+  assert.equal(browserMediaIntent('Play the first video on YouTube'), null);
   assert.equal(routeAgentTask('Pause the video', { source: 'browser' }).agent, 'browser-control');
+  assert.equal(youtubeMediaControl('pause', { windowTitle: 'YouTube - Brave', elements: [{ id: 'pause', name: 'Pause (k)', role: 'Button' }] }).id, 'pause');
 });
 
 test('local browser bridge authenticates the extension and returns page task results', async () => {
