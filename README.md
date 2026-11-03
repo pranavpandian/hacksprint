@@ -164,38 +164,6 @@ The x64 NSIS installer is written to `release/`. The installer includes the loca
 
 The browser extension reads the active tab page structure locally when BridgeUX requests it. It can click links/buttons and fill visible non-password fields. Do not connect on pages you do not want the local agent to control.
 
-## Optional Chrome helper
+## Browser extension tools
 
-The helper uses Python 3 to serve the local assistant bridge. From the repository folder, start `Start-BridgeUX.bat` and leave its window open while using the extension.
-
-1. Open `chrome://extensions` in Chrome.
-2. Turn on **Developer mode**.
-3. Select **Load unpacked** and choose this repository's `browser-extension` folder.
-4. Use its button on a page when you want the extension to apply display adjustments or send selected page text to local Ollama for explanation.
-
-The helper is optional and is not included in the Windows Electron installer. It reads page content only when the user invokes it. Stop the local bridge by closing the `Start-BridgeUX.bat` window.
-
-## Troubleshooting
-
-| Problem | What to check |
-| --- | --- |
-| Ollama/model status is unavailable | Open PowerShell and run `ollama list`. Pull the exact tag above and confirm Ollama responds locally before restarting BridgeUX. |
-| Screen vision or local assistant returns HTTP 404 or says the model is missing | Run `ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M`, then verify that `ollama list` contains that exact tag. |
-| Speech recognition says the model is missing | Check that the four ASR files are directly inside `models/asr-nemotron-3.5-560ms-int8/`, then restart the app. |
-| Neural voice fails | Check the requested language's `.onnx`, `tokens.txt`, and `espeak-ng-data` files in its folder under `models/tts/`. |
-| ASL interpretation unavailable | Check Ollama is running and the Qwen3.5 4B tag is installed; start the camera and try a short, well-lit signing clip. Results are experimental. |
-| Hand controls fail to load | Start the camera, allow camera access, then press **Enable hand controls**. The on-device MediaPipe asset is bundled with the installer. |
-| Active-window reading is incomplete | Some apps do not expose their content through Windows accessibility APIs. Choose a display and use **Read screen now** for visual fallback. |
-| npm install fails on a native dependency | Use 64-bit Node.js 22 LTS or newer. If npm specifically requests a C++ toolchain, install Visual Studio Build Tools with **Desktop development with C++**, then retry `npm ci`. |
-
-## Privacy and safety
-
-- AI, speech, and screen analysis run locally through Ollama. If you explicitly ask for current information or a web search, BridgeUX sends that spoken query to DuckDuckGo and shows source links; it does not attach screen contents.
-- The microphone is requested only for voice features. Audio is streamed to the local ASR model and is not saved by BridgeUX.
-- Camera access is optional and starts only when the user starts ASL interpretation. A rolling buffer of recent frames is sent only to local Ollama when the user requests interpretation; frames are not saved by BridgeUX.
-- Active-window reading uses Windows accessibility data. Screenshot fallback and hands-free control are user-started; captured frames are processed locally in memory. Review [Privacy](PRIVACY.md) before using it with sensitive content.
-- Model quality is imperfect. Verify important information with its original source. BridgeUX does not invent personal facts or submit forms without an explicit user-approved action.
-
-## Model and dependency licenses
-
-The app's source, bundled model weights, npm dependencies, and Ollama models may have different licenses and terms. Review the license and model card at each upstream source before redistribution or commercial use. BridgeUX does not redistribute excluded model weights through this Git repository.
+The bundled Chrome/Brave extension provides both browser-agent access and page readability controls. Load it once from the extension path shown in BridgeUX, then connect with the pairing key. Keep the extension disconnected when you do not want browser control. It communicates only with the local BridgeUX service.

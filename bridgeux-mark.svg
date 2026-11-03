@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">BridgeUX</title>
+  <rect width="48" height="48" rx="14" fill="#145b49"/>
+  <path d="M8 31h6m20 0h6M14 31c1.4-8.3 5-13 10-13s8.6 4.7 10 13M15 31h18M24 18v13" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8"/>
+  <circle cx="24" cy="13" r="2.2" fill="#fff"/>
+</svg>

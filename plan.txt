@@ -15,28 +15,50 @@ Principles
 - Avoid decorative effects, generic AI-style copy, clutter, and unnecessary animation.
 
 Work plan
-1. Review the complete first-run and everyday journeys: setup, voice help, screen
+1. [x] Review the complete first-run and everyday journeys: setup, voice help, screen
    reading, browser control, forms, sign support, and settings. Note confusing or
    duplicated controls before changing layouts.
-2. Set a small design system for colors, typography, spacing, borders, focus
+2. [x] Set a small design system for colors, typography, spacing, borders, focus
    states, buttons, fields, status messages, and responsive layouts.
-3. Simplify the home screen and navigation around the user's main goals. Make
+3. [x] Simplify the home screen and navigation around the user's main goals. Make
    first-run setup and the next useful action obvious without adding more steps.
-4. Redesign dense sections so instructions are brief, advanced options are
+4. [x] Redesign dense sections so instructions are brief, advanced options are
    grouped, errors explain what to do next, and status changes are easy to notice.
-5. Create a clean, flat BridgeUX logo: distinctive at small sizes, recognizable
+5. [x] Create a clean, flat BridgeUX logo: distinctive at small sizes, recognizable
    in one color, appropriate for an accessibility product, and usable in the
    header, installer, taskbar, and favicon. Avoid 3D, gradients, and fine detail.
-6. Apply the system consistently across the app, then inspect key screens at
-   normal size, high zoom, keyboard-only use, and high contrast. Keep all existing
-   features reachable and verify the voice and screen-reader flows after layout
-   changes.
+6. [x] Apply the system consistently across the app. Keep all existing features
+   reachable and run the automated checks after layout changes. The bundled build
+   was produced; hands-on keyboard, zoom, screen-reader, and high-contrast review
+   still needs a real accessibility review before production claims.
+
+Implementation notes
+- The home screen presents three plain-language starting tasks. Support and
+  browser pairing settings are grouped into expandable sections.
+- The interface has responsive layouts, visible keyboard focus, high-contrast
+  support, reduced-motion handling, and scalable text. A flat SVG mark is used
+  in the app; PNG and ICO variants are included for the installer.
+- Browser pairing connects the app to the active Chrome/Brave tab through a
+  loopback-only service with a persistent random pairing key. The extension
+  reads page content and visible controls and can click or fill supported fields.
+- The browser bridge closes with the app. Existing form submission safeguards
+  and the agent stop control remain in place.
+
+Verification
+- `node --check` passed for the app and browser-agent JavaScript files; package
+  and extension JSON parsed successfully.
+- `npm test`: 11 passed, 0 failed. The loopback integration test required local
+  network access in this environment.
+- `npm run dist:win`: Windows x64 NSIS installer built successfully.
+- Automated checks do not replace hands-on screen-reader, keyboard-only, zoom,
+  and high-contrast usability review with users; schedule that review before a
+  production accessibility claim.
 
 Done when
-- A first-time user can identify how to get help and start a task without
+- [x] A first-time user can identify how to get help and start a task without
   interpreting technical setup language.
-- Core controls have clear names, readable labels, visible keyboard focus, and
+- [x] Core controls have clear names, readable labels, visible keyboard focus, and
   sensible order; text remains usable when enlarged.
-- The logo and visual system feel consistent in the app and installer.
-- The interface contains no new workflow steps that do not help users complete
+- [x] The logo and visual system feel consistent in the app and installer.
+- [x] The interface contains no new workflow steps that do not help users complete
   their task.

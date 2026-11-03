@@ -284,7 +284,13 @@ async function planAgentStep(payload) {
     body: JSON.stringify({ model, stream: false, think: false, format: 'json', keep_alive: '30m', options: { temperature: 0, num_ctx: 8192, num_predict: 180, repeat_penalty: 1.2, num_gpu: 99 }, messages: [{ role: 'user', content: prompt, ...(useUi ? {} : { images: [payload.image] }) }] }),
     signal: AbortSignal.timeout(90000)
   });
-  if (!response.ok) throw new Error(`Local agent model returned ${response.status}: ${(await response.text()).slice(0, 300)}`);
+  if (!response.ok) {
+    const details = await response.text();
+    if (response.status === 400 && /model .*not found|not installed|pull it first/i.test(details)) {
+      throw new Error(`The BridgeUX local model is not installed. Open PowerShell and run: ollama pull ${model} — then try again.`);
+    }
+    throw new Error(`Local agent model returned ${response.status}: ${details.slice(0, 300)}`);
+  }
   const result = await response.json();
   let plan;
   try { plan = JSON.parse(String(result.message?.content || '')); }
@@ -292,7 +298,9 @@ async function planAgentStep(payload) {
   if (plan.status === 'needs_input' && useUi) {
     const fields = Array.isArray(plan.fields) ? plan.fields.filter(field => {
       const item = uiSnapshot.elements.find(element => element.id === field.elementId);
-      return item && item.role === 'Edit' && !item.password && !String(item.value || '').trim() && typeof field.label === 'string' && field.label.trim();
+      return item && ['Edit', 'ComboBox'].includes(item.role) && !item.password &&
+        (!item.inputType || ['text', 'email', 'tel', 'url', 'search', 'number', 'date', 'time', ''].includes(item.inputType)) &&
+        !String(item.value || '').trim() && typeof field.label === 'string' && field.label.trim();
     }).slice(0, 12).map(field => ({ elementId: field.elementId, label: String(field.label).slice(0, 100) })) : [];
     if (fields.length) return { status: 'needs_input', message: String(plan.message || `I found ${fields.length} empty fields. I will ask for each value.`).slice(0, 400), fields, snapshotId: uiSnapshot.snapshotId };
     return { status: 'blocked', message: 'I could not identify safe text fields to fill. I did not enter anything.', action: null };
@@ -409,7 +417,7 @@ async function performUiAction(payload) {
   if (!item) throw new Error('That screen control is no longer available. Read the screen again.');
   if (payload.action.type === 'setValue') {
     const spoken = String(payload.spokenValue || '').trim();
-    if (!spoken || spoken !== String(payload.action.value || '').trim() || spoken.length > 500 || item.role !== 'Edit' || item.password) throw new Error('I can only enter the exact value you just said into a visible non-password field.');
+    if (!spoken || spoken !== String(payload.action.value || '').trim() || spoken.length > 500 || !['Edit', 'ComboBox'].includes(item.role) || item.password) throw new Error('I can only enter the exact value you just said into a visible non-password field.');
   } else if (!validateUiAgentAction(payload.action, lastUiSnapshot, payload.goal)) throw new Error('This screen action is not allowed.');
   if (lastUiSnapshot.source === 'browser') {
     const result = await browserBridge.request('action', { elementId: item.id, action: payload.action });
@@ -571,4 +579,4 @@ app.whenReady().then(async () => {
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('before-quit', () => { gestureEnabled = false; gesturePointer.stop(); });
+app.on('before-quit', () => { gestureEnabled = false; gesturePointer.stop(); browserBridge?.close(); });

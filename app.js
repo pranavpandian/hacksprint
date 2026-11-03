@@ -89,7 +89,8 @@
     announce('Your accessibility choices are saved.');
     window.dispatchEvent(new Event('bridgeux:preferences-changed'));
   });
-  $('#skipSetup').onclick = () => $('#onboarding').scrollIntoView();
+  $('#skipSetup').onclick = () => { $('#supportChoices').open = true; $('#onboarding').scrollIntoView(); };
+  document.querySelectorAll('a[href="#onboarding"]').forEach(link => link.addEventListener('click', () => { $('#supportChoices').open = true; }));
   $('#textSize').oninput = event => { prefs.textSize = Number(event.target.value); apply(); save(); };
   $('#theme').onchange = event => { prefs.theme = event.target.value; apply(); save(); };
   $('#spacious').onchange = event => { prefs.spacious = event.target.checked; apply(); save(); };
