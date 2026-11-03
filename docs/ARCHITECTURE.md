@@ -8,7 +8,7 @@
 - `electron/speech-tts-worker.cjs` generates Hindi or English speech locally using Piper models through sherpa-onnx and the Piper phonemizer.
 - `sign-vision.js` samples a short rolling buffer from the user-started camera and submits a few frames to local Qwen3-VL when asked. Results are spoken. It is a general vision model, not ASL-trained or certified. `gesture-control.js` uses local MediaPipe landmarks for pointer, pinch-click, and scroll controls.
 - Explicit voice web searches send the spoken query to DuckDuckGo. The local assistant summarizes result snippets and the app shows source links; use provider pages for live booking details.
-- `browser-extension/` provides user-invoked page readability and assistant support. It is optional and not bundled in the Electron installer.
+- `browser-extension/` attaches a Chrome/Brave MV3 service worker to a loopback-only Electron browser bridge. It exposes active-tab DOM snapshots and click/fill actions to the local agent. A one-time random pairing key authorizes the extension.
 
 ## Model assets and packaging
 

@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('bridgeux', Object.freeze({
   modelStatus: () => ipcRenderer.invoke('bridgeux:model-status'),
+  browserBridge: () => ipcRenderer.invoke('bridgeux:browser-bridge'),
   askLocal: request => ipcRenderer.invoke('bridgeux:ask-local', request),
   listScreens: () => ipcRenderer.invoke('bridgeux:list-screens'),
   chooseScreen: id => ipcRenderer.invoke('bridgeux:choose-screen', id),

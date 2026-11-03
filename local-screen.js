@@ -1,6 +1,8 @@
 (()=>{'use strict';
 const $=s=>document.querySelector(s);let frame=null,live=false,busy=false,liveTimer=null;
 const preview=$('#screenPreview'),status=$('#screenStatus');
+window.bridgeux?.browserBridge().then(info=>{$('#browserPairingKey').value=info.token;$('#browserExtensionPath').textContent=info.extensionPath;$('#browserBridgeStatus').textContent=info.connected?'Browser agent connected.':'Paste the pairing key into the extension popup to attach this browser.'}).catch(()=>{});
+$('#copyBrowserPairingKey').onclick=async()=>{try{await navigator.clipboard.writeText($('#browserPairingKey').value);$('#browserBridgeStatus').textContent='Pairing key copied.'}catch{$('#browserBridgeStatus').textContent='Select and copy the pairing key.'}};
 function speechLanguage(text){return /[\u0900-\u097F]/.test(text)?'hi':'en'}
 function say(text,language=speechLanguage(text)){return window.bridgeuxSpeak?.(text,language)}
 if(!window.bridgeux){status.textContent='Screen reading and computer actions require the Electron app.';$('#refreshScreens').disabled=true;return}

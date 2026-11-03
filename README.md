@@ -9,7 +9,7 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 - Streaming English or Hindi speech-to-text using the local NVIDIA Nemotron 3.5 model through sherpa-onnx. First launch requires the user to choose accessibility supports and a preferred language; speech recognition and replies then use that choice.
 - Local English and Hindi Piper neural voices for replies and read-aloud.
 - One Hugging Face Qwen3.5 4B model for the local assistant, screen vision, and experimental ASL clips, served by Ollama.
-- Fast screen reading through Windows UI Automation when the foreground app exposes accessible text and controls; selected-display screenshots remain the fallback for visual-only content.
+- A local OpenClaw-style agent loop. Pair the included Chrome/Brave extension once to read and act on the active tab DOM; Windows UI Automation controls other desktop apps. Screenshots are only the fallback for visual-only apps.
 - Explicit spoken PC tasks start a one-shot agent automatically, with no display selection when Windows exposes accessible controls. For longer tasks, enable hands-free mode once; each step reads the current browser/app accessibility tree. It asks only for missing form values and can submit a Google Form after an explicit request. Say “stop agent” or press **Stop agent** to interrupt.
 - Voice commands such as “open example.com”, “visit Wikipedia”, or “go to the NASA website” open that site in the default browser. It resolves named sites with web search and supports HTTP/HTTPS links.
 - Spoken web searches for flights, weather, news, and other current information. BridgeUX sends the spoken search query to DuckDuckGo, then summarizes result snippets locally and displays source links. Check provider pages for live prices and availability.
@@ -155,6 +155,14 @@ npm run dist:win
 ```
 
 The x64 NSIS installer is written to `release/`. The installer includes the local speech and voice model files when present. It does **not** include Ollama or the Ollama Qwen weights; install Ollama and pull the model separately on each target machine. Model binaries and the generated installer are excluded from Git.
+
+## Connect the browser agent
+
+1. In Chrome or Brave, open Extensions and enable Developer mode.
+2. Choose Load unpacked and select the `browser-extension` path shown in BridgeUX Screen helper.
+3. Copy the pairing key from BridgeUX, open the BridgeUX Browser Agent extension popup, and choose Connect. The extension stays attached until you disconnect it.
+
+The browser extension reads the active tab page structure locally when BridgeUX requests it. It can click links/buttons and fill visible non-password fields. Do not connect on pages you do not want the local agent to control.
 
 ## Optional Chrome helper
 

@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "BridgeUX Local Web Helper",
+  "name": "BridgeUX Browser Agent",
   "version": "0.1.0",
-  "description": "User-invoked readability tools and local AI help for the current webpage.",
-  "permissions": ["activeTab", "scripting"],
-  "host_permissions": ["http://127.0.0.1:8765/*"],
+  "description": "Connect BridgeUX to the active browser tab for local page reading and actions.",
+  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "host_permissions": ["<all_urls>", "http://127.0.0.1:18765/*"],
+  "background": {"service_worker": "background.js"},
   "action": {"default_title": "BridgeUX", "default_popup": "popup.html"}
 }

@@ -79,8 +79,8 @@ function validateUiAgentAction(action, snapshot, goal) {
   if (!element || element.password || !element.name || (riskyAgentTarget.test(element.name) && !maySubmitGoogleForm)) return null;
   if (action.type === 'invoke' && maySubmitGoogleForm) return action;
   const targetIsSafe = safeClickTarget.test(element.name) ||
-    (['Hyperlink', 'TabItem', 'MenuItem'].includes(element.role) && !riskyAgentTarget.test(element.name)) ||
-    (['ListItem', 'Button'].includes(element.role) && /\b(?:open|start|launch)\b.{0,30}\b(?:browser|brave|chrome|edge|firefox)\b/i.test(goal) && /\b(?:brave|chrome|edge|firefox|browser)\b/i.test(element.name));
+    (['Hyperlink', 'TabItem', 'MenuItem', 'ListItem', 'Button'].includes(element.role) && !riskyAgentTarget.test(element.name)) ||
+    (element.role === 'ListItem' && /\b(?:open|start|launch)\b.{0,30}\b(?:browser|brave|chrome|edge|firefox)\b/i.test(goal) && /\b(?:brave|chrome|edge|firefox|browser)\b/i.test(element.name));
   if (action.type === 'invoke' && targetIsSafe && ['Button', 'Hyperlink', 'TabItem', 'MenuItem', 'ListItem', 'TreeItem'].includes(element.role)) return action;
   if (action.type === 'setValue' && element.role === 'Edit' && /\b(?:search|address|url)\b/i.test(element.name) &&
       typeof action.value === 'string' && action.value.trim().length > 0 && action.value.length <= 300 &&

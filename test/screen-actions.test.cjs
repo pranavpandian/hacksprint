@@ -91,3 +91,22 @@ test('first-video shortcut selects the first visible YouTube watch link from the
   assert.equal(firstVisibleYoutubeVideo('Open the first video', { windowTitle: 'Search - Brave', elements: [first, second] }), null);
   assert.equal(firstVisibleYoutubeVideo('Play music', { windowTitle: 'YouTube - Brave', elements: [first, second] }), null);
 });
+
+test('local browser bridge authenticates the extension and returns page task results', async () => {
+  const { createBrowserBridge } = require('../electron/browser-bridge.cjs');
+  const token = 'test-pairing-token';
+  const bridge = createBrowserBridge(token, 0);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const base = `http://127.0.0.1:${bridge.port}`;
+    const unauthorized = await fetch(`${base}/v1/poll`);
+    assert.equal(unauthorized.status, 401);
+    await fetch(`${base}/v1/poll`, { headers: { Authorization: `Bearer ${token}` } });
+    const result = bridge.request('snapshot');
+    const response = await fetch(`${base}/v1/poll`, { headers: { Authorization: `Bearer ${token}` } });
+    const job = await response.json();
+    assert.equal(job.type, 'snapshot');
+    await fetch(`${base}/v1/result`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ id: job.id, result: { url: 'https://example.com', elements: [] } }) });
+    assert.equal((await result).url, 'https://example.com');
+  } finally { bridge.close(); }
+});

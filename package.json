@@ -56,6 +56,11 @@
         "to": "gesture/gesture_recognizer.task"
       },
       {
+        "from": "browser-extension",
+        "to": "browser-extension",
+        "filter": ["**/*"]
+      },
+      {
         "from": "node_modules/@mediapipe/tasks-vision/wasm",
         "to": "mediapipe/wasm",
         "filter": [
