@@ -26,6 +26,8 @@
       "bridgeux-mark.svg",
       "bridgeux-logo.svg",
       "index.html",
+      "agent-status.html",
+      "agent-status.js",
       "styles.css",
       "app.js",
       "local.js",

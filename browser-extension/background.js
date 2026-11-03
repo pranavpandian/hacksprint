@@ -13,12 +13,13 @@ async function postResult(id, result) {
 }
 
 async function pageTask(job) {
+  const task = job.type === 'action' ? { ...job.payload, type: 'action' } : job;
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   if (!tab?.id || !/^https?:/.test(tab.url || '')) throw Error('The active tab is not a readable web page.');
   const [injected] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     world: 'ISOLATED',
-    args: [job],
+    args: [task],
     func: async task => {
       const visible = element => {
         const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
@@ -46,7 +47,18 @@ async function pageTask(job) {
             tag: element.tagName.toLowerCase()
           };
         }).filter(item => item.name || item.value);
-        return { windowTitle: document.title, url: location.href, source: 'browser', elements, text: (document.body?.innerText || '').slice(0, 12000) };
+        const video = document.querySelector('video');
+        return { windowTitle: document.title, url: location.href, source: 'browser', media: video ? { present: true, paused: video.paused, muted: video.muted } : null, elements, text: (document.body?.innerText || '').slice(0, 12000) };
+      }
+      if (task.action?.type === 'media') {
+        if (!/youtube\.com$/i.test(location.hostname) && !/\.youtube\.com$/i.test(location.hostname)) throw Error('Media controls are limited to the active YouTube tab.');
+        const video = document.querySelector('video');
+        if (!video) throw Error('I could not find a video in the active YouTube tab.');
+        if (task.action.intent === 'pause') { video.pause(); return { ok: true, message: video.paused ? 'Paused the YouTube video.' : 'The YouTube video is already paused.' }; }
+        if (task.action.intent === 'play') { await video.play(); return { ok: true, message: 'Resumed the YouTube video.' }; }
+        if (task.action.intent === 'mute') { video.muted = true; return { ok: true, message: 'Muted the YouTube video.' }; }
+        if (task.action.intent === 'unmute') { video.muted = false; return { ok: true, message: 'Turned the YouTube sound back on.' }; }
+        throw Error('That media command is not supported.');
       }
       const element = [...document.querySelectorAll('*')].find(node => node.__bridgeuxAgentId === task.elementId);
       if (!element || !visible(element)) throw Error('Page changed; read the active tab again.');

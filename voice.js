@@ -231,10 +231,9 @@
     }
 
     const handsFree = Boolean(window.bridgeuxAgentEnabled?.());
-    const screenRequest = handsFree || websiteWithFollowup || /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|open|visit|go to|navigate to|button|form field|submit this)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर|क्लिक|टाइप|खोलो|खोलें|चुनो|चुनें/.test(text);
+    const screenRequest = handsFree || websiteWithFollowup || /\b(screen|this page|current page|what is visible|what.?s on (my )?screen|read (this|the page)|click|tap|press|type into|fill (this|the|my)|enter into|open this|open|visit|go to|navigate to|button|form field|submit this|pause|resume|unpause|mute|unmute)\b/i.test(text) || /स्क्रीन|पेज पर|बटन दब|फॉर्म भर|क्लिक|टाइप|खोलो|खोलें|चुनो|चुनें/.test(text);
     if (screenRequest) {
       $('#screenTask').value = text;
-      $('#screenHelper').scrollIntoView({ behavior: 'smooth' });
       const screenChoice = $('#screenChoice');
       localStorage.setItem('bridgeux-last-voice-language', language);
       speechStatus.textContent = 'Reading the screen and working on your request locally…';

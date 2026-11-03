@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'">
+<title>BridgeUX agent status</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#123b32;color:#fff;font:14px/1.35 "Segoe UI",Arial,sans-serif}.card{height:82px;display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid #397464;border-radius:14px;background:#123b32;box-shadow:0 8px 28px #0004}.dot{width:11px;height:11px;flex:none;border-radius:50%;background:#f4bd58;box-shadow:0 0 0 4px #ffffff18;animation:pulse 1.5s infinite}.copy{flex:1;min-width:0}.brand{font-size:11px;letter-spacing:.12em;font-weight:700;color:#bce0d2}.message{overflow:hidden;margin-top:3px;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:650}button{padding:8px 10px;color:#fff;background:#235b4d;border:1px solid #508475;border-radius:8px;font:inherit;font-size:12px;cursor:pointer}button:focus-visible{outline:3px solid #ffd166;outline-offset:2px}@keyframes pulse{50%{box-shadow:0 0 0 7px #ffffff10;opacity:.72}}
+</style>
+</head>
+<body><div class="card"><span class="dot" aria-hidden="true"></span><div class="copy"><div class="brand">BRIDGEUX AGENT</div><div class="message" id="message" role="status" aria-live="polite">Working on your request…</div></div><button id="stop" type="button">Stop</button></div><script src="agent-status.js"></script></body>
+</html>

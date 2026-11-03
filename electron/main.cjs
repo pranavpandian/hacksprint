@@ -10,7 +10,7 @@ const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgen
 const windowsUIA = require('./windows-uia.cjs');
 const gesturePointer = require('./gesture-pointer.cjs');
 const { normalizeWebsiteUrl } = require('./browser-navigation.cjs');
-const { firstVisibleYoutubeVideo } = require('./browser-intents.cjs');
+const { firstVisibleYoutubeVideo, browserMediaIntent, routeAgentTask } = require('./browser-intents.cjs');
 const { createBrowserBridge } = require('./browser-bridge.cjs');
 
 
@@ -32,6 +32,8 @@ let ttsWorker = null;
 let ollamaStarting = null;
 let browserBridgeToken = '';
 let browserBridge = null;
+let agentStatusWindow = null;
+let agentStatusMessage = 'BridgeUX is working';
 const speechModelDir = app.isPackaged
   ? path.join(process.resourcesPath, 'models', 'asr-nemotron-3.5-560ms-int8')
   : path.join(__dirname, '..', 'models', 'asr-nemotron-3.5-560ms-int8');
@@ -370,11 +372,12 @@ async function performAgentAction(payload) {
 }
 
 async function withAppHidden(task) {
-  const win = BrowserWindow.getAllWindows()[0];
+  const restoreStatus = hideAgentStatusForCapture();
+  const win = BrowserWindow.getAllWindows().find(item => item !== agentStatusWindow);
   if (win && !win.isDestroyed()) win.minimize();
   await new Promise(resolve => setTimeout(resolve, 300));
   try { return await task(); }
-  finally { if (win && !win.isDestroyed()) setTimeout(() => win.restore(), 700); }
+  finally { if (win && !win.isDestroyed()) setTimeout(() => win.restore(), 700); restoreStatus(); }
 }
 
 async function getUiSnapshot() {
@@ -382,7 +385,7 @@ async function getUiSnapshot() {
     try {
       const snapshot = await browserBridge.request('snapshot');
       if (!snapshot?.error && Array.isArray(snapshot?.elements)) {
-        lastUiSnapshot = { snapshotId: randomUUID(), windowTitle: String(snapshot.windowTitle || '').slice(0, 300), url: String(snapshot.url || '').slice(0, 1000), source: 'browser', pageText: String(snapshot.text || '').slice(0, 12000), elements: snapshot.elements.slice(0, 900) };
+        lastUiSnapshot = { snapshotId: randomUUID(), windowTitle: String(snapshot.windowTitle || '').slice(0, 300), url: String(snapshot.url || '').slice(0, 1000), source: 'browser', media: snapshot.media || null, pageText: String(snapshot.text || '').slice(0, 12000), elements: snapshot.elements.slice(0, 900) };
         return lastUiSnapshot;
       }
     } catch { /* Use Windows accessibility if the active browser tab is unavailable. */ }
@@ -394,6 +397,27 @@ async function getUiSnapshot() {
   const address = elements.find(item => item.role === 'Edit' && /address and search bar|address bar/i.test(item.name));
   lastUiSnapshot = { snapshotId: randomUUID(), windowTitle: String(snapshot.windowTitle || '').slice(0, 300), url: String(address?.value || '').slice(0, 1000), elements: prioritized };
   return lastUiSnapshot;
+}
+
+function createAgentStatusWindow() {
+  const area = screen.getPrimaryDisplay().workArea;
+  agentStatusWindow = new BrowserWindow({
+    width: 292, height: 82, x: area.x + 18, y: area.y + 18,
+    frame: false, resizable: false, movable: true, show: false,
+    alwaysOnTop: true, skipTaskbar: true, backgroundColor: '#123b32',
+    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true }
+  });
+  agentStatusWindow.setAlwaysOnTop(true, 'floating');
+  agentStatusWindow.setMenuBarVisibility(false);
+  agentStatusWindow.on('closed', () => { agentStatusWindow = null; });
+  agentStatusWindow.webContents.on('did-finish-load', () => agentStatusWindow?.webContents.send('bridgeux:agent-status', { active: true, message: agentStatusMessage }));
+  agentStatusWindow.loadFile(path.join(__dirname, '..', 'agent-status.html'));
+}
+
+function hideAgentStatusForCapture() {
+  const wasVisible = Boolean(agentStatusWindow && !agentStatusWindow.isDestroyed() && agentStatusWindow.isVisible());
+  if (wasVisible) agentStatusWindow.hide();
+  return () => { if (wasVisible && agentStatusWindow && !agentStatusWindow.isDestroyed()) agentStatusWindow.showInactive(); };
 }
 
 async function analyzeUiScreen(payload) {
@@ -504,7 +528,8 @@ async function captureScreen(id) {
   if (typeof id !== 'string' || id !== selectedCaptureSource) throw new Error('Choose a screen before capturing it.');
   if (Date.now() - lastCaptureAt < 1200) throw new Error('Wait a moment before taking another screen snapshot.');
   lastCaptureAt = Date.now();
-  const win = BrowserWindow.getAllWindows()[0];
+  const restoreStatus = hideAgentStatusForCapture();
+  const win = BrowserWindow.getAllWindows().find(item => item !== agentStatusWindow);
   if (win) win.minimize();
   await new Promise(resolve => setTimeout(resolve, 450));
   try {
@@ -513,7 +538,7 @@ async function captureScreen(id) {
     if (!source || source.thumbnail.isEmpty()) throw new Error('Could not capture the selected display. Refresh the screen list.');
     const { width, height } = source.thumbnail.getSize();
     return { image: source.thumbnail.toJPEG(78).toString('base64'), width, height };
-  } finally { if (win && !win.isDestroyed()) win.restore(); }
+  } finally { if (win && !win.isDestroyed()) win.restore(); restoreStatus(); }
 }
 
 ipcMain.handle('bridgeux:model-status', () => modelStatus());
@@ -523,6 +548,40 @@ ipcMain.handle('bridgeux:inspect-screen', (_event, payload) => inspectScreen(pay
 ipcMain.handle('bridgeux:agent-mode', (_event, enabled) => {
   agentEnabled = enabled === true;
   return { enabled: agentEnabled };
+});
+ipcMain.handle('bridgeux:agent-route', (_event, payload) => {
+  const snapshot = payload?.snapshotId === lastUiSnapshot?.snapshotId ? lastUiSnapshot : null;
+  const route = routeAgentTask(payload?.goal, snapshot);
+  let available = false;
+  if (route.action && snapshot?.source === 'browser' && snapshot.media?.present) {
+    try { available = /(?:^|\.)youtube\.com$/i.test(new URL(snapshot.url).hostname); } catch {}
+  }
+  return { ...route, available };
+});
+ipcMain.handle('bridgeux:browser-media', async (_event, payload) => {
+  const snapshot = payload?.snapshotId === lastUiSnapshot?.snapshotId ? lastUiSnapshot : null;
+  const intent = browserMediaIntent(payload?.goal);
+  let isYoutube = false;
+  try { isYoutube = /(?:^|\.)youtube\.com$/i.test(new URL(snapshot?.url).hostname); } catch {}
+  if (!agentEnabled || !intent || !snapshot || snapshot.source !== 'browser' || !snapshot.media?.present || !isYoutube) {
+    throw new Error('I could not find a controllable video in the active YouTube tab. Keep the video tab open and try again.');
+  }
+  const result = await browserBridge.request('action', { action: { type: 'media', intent } });
+  if (result?.error) throw new Error(result.error);
+  return result;
+});
+ipcMain.handle('bridgeux:agent-status', (_event, payload) => {
+  const active = payload?.active === true;
+  if (active) {
+    agentStatusMessage = String(payload.message || 'BridgeUX is working').slice(0, 90);
+    if (!agentStatusWindow || agentStatusWindow.isDestroyed()) createAgentStatusWindow();
+    else agentStatusWindow.webContents.send('bridgeux:agent-status', { active, message: agentStatusMessage });
+    agentStatusWindow.showInactive();
+  } else if (agentStatusWindow && !agentStatusWindow.isDestroyed()) agentStatusWindow.close();
+  return { visible: active };
+});
+ipcMain.on('bridgeux:overlay-stop', () => {
+  for (const win of BrowserWindow.getAllWindows()) if (win !== agentStatusWindow && !win.isDestroyed()) win.webContents.send('bridgeux:agent-stop-request');
 });
 ipcMain.handle('bridgeux:agent-step', (_event, payload) => planAgentStep(payload));
 ipcMain.handle('bridgeux:agent-action', (_event, payload) => performAgentAction(payload));
@@ -579,4 +638,4 @@ app.whenReady().then(async () => {
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('before-quit', () => { gestureEnabled = false; gesturePointer.stop(); browserBridge?.close(); });
+app.on('before-quit', () => { gestureEnabled = false; gesturePointer.stop(); browserBridge?.close(); if (agentStatusWindow && !agentStatusWindow.isDestroyed()) agentStatusWindow.destroy(); });

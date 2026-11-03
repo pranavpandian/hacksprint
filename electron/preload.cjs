@@ -3,6 +3,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('bridgeux', Object.freeze({
   modelStatus: () => ipcRenderer.invoke('bridgeux:model-status'),
   browserBridge: () => ipcRenderer.invoke('bridgeux:browser-bridge'),
+  routeAgentTask: request => ipcRenderer.invoke('bridgeux:agent-route', request),
+  performBrowserMedia: request => ipcRenderer.invoke('bridgeux:browser-media', request),
+  setAgentStatus: request => ipcRenderer.invoke('bridgeux:agent-status', request),
+  onAgentStop: callback => ipcRenderer.on('bridgeux:agent-stop-request', callback),
+  requestAgentStop: () => ipcRenderer.send('bridgeux:overlay-stop'),
+  onAgentStatus: callback => ipcRenderer.on('bridgeux:agent-status', (_event, status) => callback(status)),
   askLocal: request => ipcRenderer.invoke('bridgeux:ask-local', request),
   listScreens: () => ipcRenderer.invoke('bridgeux:list-screens'),
   chooseScreen: id => ipcRenderer.invoke('bridgeux:choose-screen', id),
