@@ -758,6 +758,9 @@ app.whenReady().then(async () => {
     language: ['English', 'हिन्दी'].includes(payload?.language) ? payload.language : 'English',
     supports: []
   }));
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) =>
+    permission === 'media' || permission === 'display-capture'
+  );
   session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
     callback(permission === 'media' || permission === 'display-capture');
   });
