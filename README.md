@@ -167,7 +167,7 @@ ollama pull qwen3-vl:4b-instruct
 ollama list
 ```
 
-BridgeUX checks Ollama's installed tags before making a model request. It prefers the configured Hugging Face Qwen3.5 model, then Qwen3-VL instruct models, for both vision and agent tasks. Otherwise it uses Qwen2.5 1.5B for short text plans and Moondream for screen images. Install [Qwen3-VL 4B Instruct](https://ollama.com/library/qwen3-vl:4b-instruct) for a stronger unified vision and agent model; the 3.3 GB model can run locally. Older Qwen3-VL thinking tags are a last resort because their long reasoning can consume the agent's short output limit. Browser pages are read through the browser extension or Windows UI Automation first, so actions such as opening the first visible YouTube video use the page's actual link instead of image interpretation. These general vision models are not trained to translate ASL.
+BridgeUX checks Ollama's installed tags before making a model request. It prefers the configured Hugging Face Qwen3.5 model, then Qwen3-VL instruct models, for both vision and agent tasks. Otherwise it uses Qwen2.5 1.5B for short text plans and Moondream for screen images. Install [Qwen3-VL 4B Instruct](https://ollama.com/library/qwen3-vl:4b-instruct) for a stronger unified vision and agent model; the 3.3 GB model can run locally. Older Qwen3-VL thinking tags are skipped because their long reasoning can consume the agent's short output limit. Browser pages are read through the browser extension or Windows UI Automation first, so actions such as opening the first visible YouTube video use the page's actual link instead of image interpretation. These general vision models are not trained to translate ASL.
 
 ### 4. On-device hand gesture controls
 

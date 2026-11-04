@@ -22,8 +22,8 @@ else app.on('second-instance', () => {
 });
 
 const PREFERRED_MODEL = 'hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M';
-const VISION_MODEL_CANDIDATES = [PREFERRED_MODEL, 'qwen3-vl:4b-instruct', 'qwen3-vl:2b-instruct', 'moondream:latest', 'qwen3-vl:4b', 'qwen3-vl:2b'];
-const TEXT_MODEL_CANDIDATES = [PREFERRED_MODEL, 'qwen3-vl:4b-instruct', 'qwen3-vl:2b-instruct', 'qwen2.5:1.5b-instruct', 'qwen3-vl:4b', 'qwen3-vl:2b'];
+const VISION_MODEL_CANDIDATES = [PREFERRED_MODEL, 'qwen3-vl:4b-instruct', 'qwen3-vl:2b-instruct', 'moondream:latest'];
+const TEXT_MODEL_CANDIDATES = [PREFERRED_MODEL, 'qwen3-vl:4b-instruct', 'qwen3-vl:2b-instruct', 'qwen2.5:1.5b-instruct'];
 let MODEL = PREFERRED_MODEL;
 let ASSISTANT_MODEL = PREFERRED_MODEL;
 let installedModelNames = [];
@@ -343,7 +343,7 @@ async function planAgentStep(payload) {
   if (!response.ok) {
     const details = await response.text();
     if ([400, 404].includes(response.status) && /model .*not found|not installed|pull it first/i.test(details)) {
-      throw new Error(`The BridgeUX local model is not installed. Open PowerShell and run: ollama pull ${model} — then try again.`);
+      throw new Error(`No compatible BridgeUX agent model is installed. Open PowerShell and run: ollama pull qwen3-vl:4b-instruct — then try again.`);
     }
     throw new Error(`Local agent model returned ${response.status}: ${details.slice(0, 300)}`);
   }
