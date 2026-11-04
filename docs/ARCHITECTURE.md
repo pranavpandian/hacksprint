@@ -2,7 +2,7 @@
 
 ## Current Electron prototype
 
-- `electron/main.cjs` owns screen access, the persistent voice-driven agent loop, and a loopback-only browser bridge. The paired Chrome/Brave extension exposes the active tab DOM for fast page reading and click/fill actions; Windows UI Automation controls desktop apps, with screenshots as fallback. Ollama serves the single Qwen3.5 4B assistant/vision model. The user can stop agent runs at any time. Google Forms submit only after an explicit request.
+- `electron/main.cjs` owns screen access, the persistent voice-driven agent loop, and a loopback-only browser bridge. The paired Chrome/Brave extension exposes the active tab DOM for fast page reading and click/fill actions; Windows UI Automation controls desktop apps, with screenshots as fallback. Ollama models are selected from installed compatible tags, preferring Qwen3.5 or Qwen3-VL Instruct, with Qwen2.5 for text planning and Moondream for vision as fallbacks. The user can stop agent runs at any time. Google Forms submit only after an explicit request.
 - `electron/preload.cjs` exposes the renderer to a limited, validated set of IPC functions. Electron runs with context isolation, sandboxing, disabled Node integration, and a restrictive content security policy.
 - `electron/speech-asr-worker.cjs` streams microphone samples into the local Nemotron 3.5 streaming model through sherpa-onnx. First-run setup requires accessibility support and English/Hindi language choices; the selected language is pinned to each speech stream and used for local replies.
 - `electron/speech-tts-worker.cjs` generates Hindi or English speech locally using Piper models through sherpa-onnx and the Piper phonemizer.

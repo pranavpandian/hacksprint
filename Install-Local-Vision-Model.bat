@@ -7,12 +7,12 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo This downloads the local assistant, screen vision, and ASL demo model:
-echo   hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
+echo This downloads the local assistant and screen vision model:
+echo   qwen3-vl:4b-instruct
 echo They run locally after download. No cloud AI service is used.
 choice /m "Download the model now"
 if errorlevel 2 exit /b 0
-ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
+ollama pull qwen3-vl:4b-instruct
 if errorlevel 1 exit /b 1
 echo Model ready. Start BridgeUX and open the Screen helper section.
 pause

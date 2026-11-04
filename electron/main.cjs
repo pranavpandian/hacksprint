@@ -12,6 +12,7 @@ const gesturePointer = require('./gesture-pointer.cjs');
 const { normalizeWebsiteUrl } = require('./browser-navigation.cjs');
 const { firstVisibleYoutubeVideo, youtubeMediaControl, browserMediaIntent, routeAgentTask } = require('./browser-intents.cjs');
 const { createBrowserBridge } = require('./browser-bridge.cjs');
+const { selectLocalModels } = require('./local-models.cjs');
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();
@@ -20,8 +21,14 @@ else app.on('second-instance', () => {
   if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
 });
 
-const MODEL = 'hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M';
-const ASSISTANT_MODEL = MODEL;
+const PREFERRED_MODEL = 'hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M';
+const VISION_MODEL_CANDIDATES = [PREFERRED_MODEL, 'qwen3-vl:4b-instruct', 'qwen3-vl:2b-instruct', 'moondream:latest', 'qwen3-vl:4b', 'qwen3-vl:2b'];
+const TEXT_MODEL_CANDIDATES = [PREFERRED_MODEL, 'qwen3-vl:4b-instruct', 'qwen3-vl:2b-instruct', 'qwen2.5:1.5b-instruct', 'qwen3-vl:4b', 'qwen3-vl:2b'];
+let MODEL = PREFERRED_MODEL;
+let ASSISTANT_MODEL = PREFERRED_MODEL;
+let installedModelNames = [];
+let modelsCheckedAt = 0;
+let modelRefresh = null;
 const allowedTasks = new Set(['help', 'simplify', 'explain', 'steps']);
 const allowedSupports = new Set(['blind', 'lowVision', 'deaf', 'hardOfHearing', 'sign', 'language', 'plain']);
 const execFileAsync = promisify(execFile);
@@ -158,7 +165,7 @@ function fallback(task, text, language = 'English') {
 async function ensureOllama() {
   try {
     const response = await fetch('http://127.0.0.1:11434/api/version', { signal: AbortSignal.timeout(900) });
-    if (response.ok) return true;
+    if (response.ok) { await refreshInstalledModels(); return true; }
   } catch {}
   if (ollamaStarting) return ollamaStarting;
   const candidates = [
@@ -175,7 +182,7 @@ async function ensureOllama() {
     const poll = async () => {
       try {
         const response = await fetch('http://127.0.0.1:11434/api/version', { signal: AbortSignal.timeout(900) });
-        if (response.ok) return resolve(true);
+        if (response.ok) { await refreshInstalledModels(true); return resolve(true); }
       } catch {}
       if (Date.now() - startedAt >= 15000) return resolve(false);
       setTimeout(poll, 500);
@@ -185,19 +192,35 @@ async function ensureOllama() {
   return ollamaStarting;
 }
 
+async function refreshInstalledModels(force = false) {
+  if (!force && Date.now() - modelsCheckedAt < 15000) return installedModelNames;
+  if (modelRefresh) return modelRefresh;
+  modelRefresh = (async () => {
+    const response = await fetch('http://127.0.0.1:11434/api/tags', { signal: AbortSignal.timeout(1800) });
+    if (!response.ok) throw new Error(`Ollama model list returned ${response.status}.`);
+    const data = await response.json();
+    installedModelNames = (data.models || []).map(model => model.name || '').filter(Boolean);
+    const selected = selectLocalModels(installedModelNames, VISION_MODEL_CANDIDATES, TEXT_MODEL_CANDIDATES, PREFERRED_MODEL);
+    MODEL = selected.vision;
+    ASSISTANT_MODEL = selected.assistant;
+    modelsCheckedAt = Date.now();
+    return installedModelNames;
+  })().finally(() => { modelRefresh = null; });
+  try { return await modelRefresh; }
+  catch { return installedModelNames; }
+}
+
 async function modelStatus() {
   await ensureOllama();
   try {
-    const response = await fetch('http://127.0.0.1:11434/api/tags', { signal: AbortSignal.timeout(1800) });
-    const data = await response.json();
-    const names = (data.models || []).map(model => model.name || '');
-    const visionReady = names.some(name => name === MODEL || name.startsWith(`${MODEL}:`));
-    const assistantReady = names.some(name => name === ASSISTANT_MODEL || name.startsWith(`${ASSISTANT_MODEL}:`));
+    const names = await refreshInstalledModels(true);
+    const visionReady = names.includes(MODEL);
+    const assistantReady = names.includes(ASSISTANT_MODEL);
     try {
       const loaded = await (await fetch('http://127.0.0.1:11434/api/ps', { signal: AbortSignal.timeout(1200) })).json();
-      const item = (loaded.models || []).find(model => model.name === MODEL || model.name.startsWith(`${MODEL}:`));
-      return { ready: visionReady && assistantReady, visionReady, assistantReady, model: `${MODEL} · ${ASSISTANT_MODEL}`, gpuPercent: item?.size ? Math.round((item.size_vram || 0) / item.size * 100) : 0 };
-    } catch { return { ready: visionReady && assistantReady, visionReady, assistantReady, model: `${MODEL} · ${ASSISTANT_MODEL}`, gpuPercent: 0 }; }
+      const item = (loaded.models || []).find(model => model.name === MODEL || model.name === ASSISTANT_MODEL);
+      return { ready: visionReady && assistantReady, visionReady, assistantReady, model: `Vision: ${MODEL} · Assistant: ${ASSISTANT_MODEL}`, gpuPercent: item?.size ? Math.round((item.size_vram || 0) / item.size * 100) : 0 };
+    } catch { return { ready: visionReady && assistantReady, visionReady, assistantReady, model: `Vision: ${MODEL} · Assistant: ${ASSISTANT_MODEL}`, gpuPercent: 0 }; }
   } catch { return { ready: false, model: MODEL }; }
 }
 
@@ -319,7 +342,7 @@ async function planAgentStep(payload) {
   });
   if (!response.ok) {
     const details = await response.text();
-    if (response.status === 400 && /model .*not found|not installed|pull it first/i.test(details)) {
+    if ([400, 404].includes(response.status) && /model .*not found|not installed|pull it first/i.test(details)) {
       throw new Error(`The BridgeUX local model is not installed. Open PowerShell and run: ollama pull ${model} — then try again.`);
     }
     throw new Error(`Local agent model returned ${response.status}: ${details.slice(0, 300)}`);

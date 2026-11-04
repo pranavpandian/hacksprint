@@ -8,7 +8,7 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 
 - Streaming English or Hindi speech-to-text through the local sherpa-onnx Nemotron 3.5 model. First launch requires the user to choose accessibility supports and a preferred language.
 - Local English and Hindi Piper neural voices for replies and read-aloud.
-- One Hugging Face Qwen3.5 4B model for the local assistant, screen vision, and experimental ASL clips, served by Ollama.
+- Local Ollama model selection uses installed compatible models: it prefers Qwen3.5 4B or Qwen3-VL for both assistant and vision, then can use Qwen2.5 for text and Moondream for vision. It no longer assumes one exact model tag is installed.
 - A local OpenClaw-style agent loop. Pair the included Chrome/Brave extension once to read and act on the active tab DOM; Windows UI Automation controls other desktop apps. Screenshots are only the fallback for visual-only apps.
 - Explicit spoken PC tasks start a one-shot agent automatically, with no display selection when Windows exposes accessible controls. For longer tasks, enable hands-free mode once; each step reads the current browser/app accessibility tree. It asks only for missing form values and can submit a Google Form after an explicit request. Say “stop agent” or press **Stop agent** to interrupt.
 - Voice commands such as “open example.com”, “visit Wikipedia”, or “go to the NASA website” open that site in the default browser. It resolves named sites with web search and supports HTTP/HTTPS links.
@@ -82,7 +82,7 @@ These are practical recommendations, not a hardware compatibility guarantee. Per
 4. In the BridgeUX folder, run `Install-Local-Vision-Model.bat`, or open PowerShell and run:
 
    ```powershell
-   ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
+   ollama pull qwen3-vl:4b-instruct
    ```
 
 5. Start BridgeUX and complete the required support and preferred-language setup. Choose whether to enable the microphone when prompted; speech follows the selected English or Hindi language. Select a display to analyze screen content. Camera permission is only needed for ASL spelling or hand controls.
@@ -102,7 +102,7 @@ npm ci
 Download and place the model files using [Local model setup](#local-model-setup), then download the local Ollama models:
 
 ```powershell
-ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
+ollama pull qwen3-vl:4b-instruct
 ```
 
 Launch BridgeUX:
@@ -111,7 +111,7 @@ Launch BridgeUX:
 npm start
 ```
 
-Ollama normally runs as a local background service. BridgeUX tries to start it if it is installed but not already running. AI status in the app should show the Qwen3.5 model as ready.
+Ollama normally runs as a local background service. BridgeUX tries to start it if it is installed but not already running, then selects compatible installed models automatically. On this project PC, it uses `moondream:latest` for screen images and `qwen2.5:1.5b-instruct` for agent decisions; the unused `qwen3-vl:2b` tag is a thinking build that may not return short action plans promptly.
 
 ## Local model setup
 
@@ -163,11 +163,11 @@ models/tts/vits-piper-hi_IN-pratham-medium/espeak-ng-data/
 Install [Ollama](https://ollama.com/download/windows), then download the exact model names BridgeUX uses:
 
 ```powershell
-ollama pull hf.co/gguf/Qwen3.5-4B-GGUF:Q4_K_M
+ollama pull qwen3-vl:4b-instruct
 ollama list
 ```
 
-The assistant, visual screen fallback, and experimental ASL clips use Hugging Face's [Qwen3.5-4B-GGUF Q4_K_M](https://huggingface.co/gguf/Qwen3.5-4B-GGUF), around 3.5 GB in Ollama's model store. Browser pages are read through Windows UI Automation first, so actions such as opening the first visible YouTube video use the page's actual link instead of image interpretation. Qwen3.5 is a general vision model, not trained to reliably translate ASL.
+BridgeUX checks Ollama's installed tags before making a model request. It prefers the configured Hugging Face Qwen3.5 model, then Qwen3-VL instruct models, for both vision and agent tasks. Otherwise it uses Qwen2.5 1.5B for short text plans and Moondream for screen images. Install [Qwen3-VL 4B Instruct](https://ollama.com/library/qwen3-vl:4b-instruct) for a stronger unified vision and agent model; the 3.3 GB model can run locally. Older Qwen3-VL thinking tags are a last resort because their long reasoning can consume the agent's short output limit. Browser pages are read through the browser extension or Windows UI Automation first, so actions such as opening the first visible YouTube video use the page's actual link instead of image interpretation. These general vision models are not trained to translate ASL.
 
 ### 4. On-device hand gesture controls
 
