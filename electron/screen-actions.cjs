@@ -1,15 +1,15 @@
 'use strict';
 
-const blockedTask = /\b(?:submit|send|purchase|buy|pay|delete|remove|transfer|share|post|publish|confirm|log\s*out|sign\s*out)\b/i;
+const blockedTask = /\b(?:password|passcode)\b/i;
 const negatedTask = /\b(?:don't|do not|never|not)\b.{0,30}\b(?:click|tap|press|type|enter|fill|select|open)\b/i;
-const clickTask = /^(?:please\s+)?(?:click|tap|select|open)\b|^(?:कृपया\s*)?(?:क्लिक|खोलो|खोलें|चुनो|चुनें|बटन\s+दबाओ|बटन\s+दबाएं)/i;
+const clickTask = /^(?:please\s+)?(?:click|tap|select|open|submit|send|delete|remove|save|cancel|confirm|accept|apply)\b|^(?:कृपया\s*)?(?:क्लिक|खोलो|खोलें|चुनो|चुनें|बटन\s+दबाओ|बटन\s+दबाएं)/i;
 const typeTask = /^(?:please\s+)?(?:type|enter|fill)\b|^(?:कृपया\s*)?(?:टाइप|लिखो|लिखें|भरें)/i;
 const pressTask = /^(?:please\s+)?press\b|^(?:कृपया\s*)?कुंजी\s+दबाएं/i;
-const blockedHindiTask = /(?:भेजें|भेजो|मिटाएं|हटाएं|खरीदें|भुगतान|सबमिट|पुष्टि|पोस्ट)/i;
+const blockedHindiTask = /(?:खरीदें|भुगतान|पासवर्ड)/i;
 const negatedHindiTask = /(?:मत|नहीं).{0,24}(?:क्लिक|दबाएं|दबाओ|टाइप|लिखें|खोलें|चुनें)/i;
-const riskyAgentTask = /\b(?:submit|send|purchase|buy|pay|delete|remove|transfer|share|post|publish|confirm|sign\s?in|log\s?in|log\s?out|change|update|install|uninstall|upload|subscribe|apply|order|book|cancel|accept|agree|password|payment|account|checkout|cart|reserve|register|add to cart)\b|(?:भेज|सबमिट|खरीद|भुगतान|मिटा|हट|पुष्टि|प्रकाशित|खाता|पासवर्ड|रद्द|अनुमति)/i;
-const riskyAgentTarget = /\b(?:submit|send|share|delete|remove|buy|purchase|pay|payment|confirm|publish|post|sign\s?in|log\s?in|log\s?out|save|cancel|accept|agree|apply|unfollow|unsubscribe|follow|join|leave|connect|subscribe|install|uninstall|upload|download|password|account|checkout|cart|reserve|register|add to cart)\b/i;
-const safeClickTarget = /\b(?:link|menu|tab|home|back|search|settings|help|open|expand|collapse|navigation|browser|application|app|address)\b/i;
+const riskyAgentTask = /\b(?:password|passcode)\b|(?:पासवर्ड)/i;
+const riskyAgentTarget = /\b(?:password|passcode)\b/i;
+const safeClickTarget = /.+/s;
 
 function isSafeActionTask(task) {
   return typeof task === 'string' && (clickTask.test(task.trim()) || typeTask.test(task.trim()) || pressTask.test(task.trim())) &&
@@ -45,17 +45,16 @@ function isGoogleFormSubmitGoal(goal, snapshot) {
 
 function isSafeAgentGoalForScreen(goal, snapshot) {
   if (typeof goal !== 'string' || goal.trim().length < 3 || goal.length > 500) return false;
-  const allowsGoogleFormSubmit = isGoogleFormSubmitGoal(goal, snapshot);
-  const withoutSubmit = goal.replace(/\bsubmit\b/gi, '');
-  return (!riskyAgentTask.test(goal) || (allowsGoogleFormSubmit && !riskyAgentTask.test(withoutSubmit))) &&
-    (!/\bsubmit\b/i.test(goal) || allowsGoogleFormSubmit);
+  return !riskyAgentTask.test(goal);
 }
 
 function validateAgentAction(action, { width, height }, goal) {
   if (!isSafeAgentGoal(goal) || !action || typeof action !== 'object' || Array.isArray(action) ||
       typeof action.reason !== 'string' || !action.reason.trim() || action.reason.length > 300) return null;
 
+  const highImpact = /\b(?:submit|send|publish|post|delete|remove|save|cancel|confirm|accept|apply|purchase|buy|pay|transfer)\b/i;
   if (action.type === 'click' && typeof action.target === 'string' && action.target.length <= 120 &&
+      (!highImpact.test(action.target) || highImpact.test(goal)) &&
       safeClickTarget.test(action.target) && !riskyAgentTarget.test(action.target) &&
       Number.isInteger(action.x) && Number.isInteger(action.y) && action.x >= 0 && action.y >= 0 &&
       action.x < width && action.y < height) return action;
@@ -75,11 +74,13 @@ function validateUiAgentAction(action, snapshot, goal) {
   if (!isSafeAgentGoalForScreen(goal, snapshot) || !action || typeof action !== 'object' || Array.isArray(action) ||
       typeof action.reason !== 'string' || !action.reason.trim() || action.reason.length > 300) return null;
   const element = snapshot?.elements?.find(item => item.id === action.elementId);
+  const highImpact = /\b(?:submit|send|publish|post|delete|remove|save|cancel|confirm|accept|apply|purchase|buy|pay|transfer)\b/i;
+  if (element && highImpact.test(element.name) && !highImpact.test(goal)) return null;
   const maySubmitGoogleForm = isGoogleFormSubmitGoal(goal, snapshot) && element?.role === 'Button' && /^submit$/i.test(element.name.trim());
   if (!element || element.password || !element.name || (riskyAgentTarget.test(element.name) && !maySubmitGoogleForm)) return null;
   if (action.type === 'invoke' && maySubmitGoogleForm) return action;
   const targetIsSafe = safeClickTarget.test(element.name) ||
-    (['Hyperlink', 'TabItem', 'MenuItem', 'ListItem', 'Button'].includes(element.role) && !riskyAgentTarget.test(element.name)) ||
+    (['Hyperlink', 'TabItem', 'MenuItem', 'ListItem', 'Button', 'TreeItem', 'Text'].includes(element.role) && !riskyAgentTarget.test(element.name)) ||
     (element.role === 'ListItem' && /\b(?:open|start|launch)\b.{0,30}\b(?:browser|brave|chrome|edge|firefox)\b/i.test(goal) && /\b(?:brave|chrome|edge|firefox|browser)\b/i.test(element.name));
   if (action.type === 'invoke' && targetIsSafe && ['Button', 'Hyperlink', 'TabItem', 'MenuItem', 'ListItem', 'TreeItem'].includes(element.role)) return action;
   if (action.type === 'setValue' && ['Edit', 'ComboBox'].includes(element.role) && /\b(?:search|address|url)\b/i.test(element.name) &&
@@ -98,6 +99,7 @@ function validateSpokenFormValue(payload, snapshot) {
     action?.type === 'setValue' && spoken.length > 0 && spoken === value && spoken.length <= 500 &&
     element && ['Edit', 'ComboBox'].includes(element.role) && !element.password &&
     !String(element.value || '').trim() &&
+    (!/password|passcode|security code|card number|credit card|debit card|bank account|routing number/i.test(element.name)) &&
     (!element.inputType || ['text', 'email', 'tel', 'url', 'number', 'date', 'time', ''].includes(element.inputType));
 }
 

@@ -8,11 +8,11 @@ if errorlevel 1 (
   exit /b 1
 )
 echo This downloads the local assistant and screen vision model:
-echo   qwen3-vl:4b-instruct
+echo   qwen3.5:4b
 echo They run locally after download. No cloud AI service is used.
 choice /m "Download the model now"
 if errorlevel 2 exit /b 0
-ollama pull qwen3-vl:4b-instruct
+ollama pull qwen3.5:4b
 if errorlevel 1 exit /b 1
 echo Model ready. Start BridgeUX and open the Screen helper section.
 pause

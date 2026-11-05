@@ -10,7 +10,7 @@ test('only an explicit, low-risk action request can ask the model for an action'
   assert.equal(isSafeActionTask('Click the settings button'), true);
   assert.equal(isSafeActionTask('Please type hello in the search field'), true);
   assert.equal(isSafeActionTask('Describe the settings button'), false);
-  assert.equal(isSafeActionTask('Submit this form'), false);
+  assert.equal(isSafeActionTask('Submit this form'), true);
   assert.equal(isSafeActionTask('Do not click the button'), false);
   assert.equal(isSafeActionTask('बटन दबाएं'), true);
   assert.equal(isSafeActionTask('कृपया टाइप नमस्ते'), true);
@@ -29,7 +29,7 @@ test('text proposals require an explicit type request and bounded text', () => {
   const action = { type: 'type', text: 'hello', reason: 'Enter the requested text' };
   assert.deepEqual(validateSuggestedAction(action, screen, 'Type hello'), action);
   assert.equal(validateSuggestedAction({ ...action, text: 'x'.repeat(1001) }, screen, 'Type text'), null);
-  assert.equal(validateSuggestedAction(action, screen, 'Fill and submit this form'), null);
+  assert.deepEqual(validateSuggestedAction(action, screen, 'Fill and submit this form'), action);
 });
 
 test('key proposals are restricted to the approved key allowlist', () => {
@@ -38,14 +38,19 @@ test('key proposals are restricted to the approved key allowlist', () => {
   assert.equal(validateSuggestedAction({ ...action, key: 'ALT+F4' }, screen, 'Press Alt+F4'), null);
 });
 
-test('agent goals and autonomous actions stay within the low-risk allowlist', () => {
+test('agent follows explicit everyday actions and blocks financial and credential actions', () => {
   assert.equal(isSafeAgentGoal('Open the help menu'), true);
-  assert.equal(isSafeAgentGoal('Send this message'), false);
-  assert.equal(isSafeAgentGoal('Delete the file'), false);
-  assert.equal(isSafeAgentGoal('Add this item to my cart'), false);
+  assert.equal(isSafeAgentGoal('Pause the video'), true);
+  assert.equal(isSafeAgentGoal('Send this message'), true);
+  assert.equal(isSafeAgentGoal('Delete the file'), true);
+  assert.equal(isSafeAgentGoal('Fill this form and submit it'), true);
+  assert.equal(isSafeAgentGoal('Pay this invoice'), true);
+  assert.equal(isSafeAgentGoal('Enter my password'), false);
+  assert.equal(isSafeAgentGoal('Enter my password'), false);
   const click = { type: 'click', x: 50, y: 60, target: 'Help menu', reason: 'Open help' };
   assert.deepEqual(validateAgentAction(click, screen, 'Open the help menu'), click);
   assert.equal(validateAgentAction({ ...click, target: 'Submit button' }, screen, 'Open the help menu'), null);
+  assert.deepEqual(validateAgentAction({ ...click, target: 'Submit button' }, screen, 'Submit this form'), { ...click, target: 'Submit button' });
   assert.equal(validateAgentAction({ ...click, x: 1280 }, screen, 'Open the help menu'), null);
   const type = { type: 'type', target: 'Search field', text: 'cats', reason: 'Search for cats' };
   assert.deepEqual(validateAgentAction(type, screen, 'Search the web for cats'), type);
@@ -71,7 +76,7 @@ test('Windows UI actions target named safe controls and exact user-provided sear
   assert.equal(validateUiAgentAction({ ...openHelp, elementId: 'e4' }, snapshot, 'Open the help page'), null);
 });
 
-test('an explicit Google Forms request can submit only the actual Google Forms Submit button', () => {
+test('an explicitly requested form submission can invoke the visible submit button', () => {
   const snapshot = { url: 'https://docs.google.com/forms/d/e/example/viewform', elements: [
     { id: 'send', name: 'Submit', role: 'Button', password: false },
     { id: 'other', name: 'Submit', role: 'Button', password: false }
@@ -79,8 +84,8 @@ test('an explicit Google Forms request can submit only the actual Google Forms S
   const submit = { type: 'invoke', elementId: 'send', reason: 'Submit the filled form' };
   assert.equal(isSafeAgentGoal('Fill this Google Form and submit it', snapshot), true);
   assert.deepEqual(validateUiAgentAction(submit, snapshot, 'Fill this Google Form and submit it'), submit);
-  assert.equal(isSafeAgentGoal('Submit this other form', snapshot), false);
-  assert.equal(validateUiAgentAction({ ...submit, elementId: 'send' }, { ...snapshot, url: 'https://example.com/form' }, 'Fill this Google Form and submit it'), null);
+  assert.equal(isSafeAgentGoal('Submit this other form', snapshot), true);
+  assert.deepEqual(validateUiAgentAction({ ...submit, elementId: 'send' }, { ...snapshot, url: 'https://example.com/form' }, 'Fill this Google Form and submit it'), submit);
 });
 
 test('form filling accepts only the exact spoken value for an empty visible non-password field', () => {

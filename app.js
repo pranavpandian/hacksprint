@@ -32,6 +32,7 @@
   updateNavigation();
 
   const gate = $('#setupGate');
+  let setupLanguage = 'English';
   const gateSupports = [...document.querySelectorAll('[name=setupSupport]')];
   if (!prefs.setupComplete) gate.showModal();
   gate.addEventListener('cancel', event => { if (!prefs.setupComplete) event.preventDefault(); });
@@ -41,7 +42,7 @@
       gateSupports[0].focus();
       return;
     }
-    $('#setupStepLabel').textContent = 'STEP 2 OF 2';
+    $('#setupStepLabel').textContent = 'STEP 2 OF 3';
     $('#setupGateTitle').textContent = 'What language should BridgeUX use?';
     $('#setupGateHint').hidden = true;
     $('#setupGateSupports').hidden = true;
@@ -53,7 +54,12 @@
     $('#setupLanguage').focus();
   };
   $('#setupBack').onclick = () => {
-    $('#setupStepLabel').textContent = 'STEP 1 OF 2';
+    if (!$('#setupAiStep').hidden) {
+      $('#setupAiStep').hidden = true; $('#setupLanguageStep').hidden = false;
+      $('#setupStepLabel').textContent = 'STEP 2 OF 3'; $('#setupGateTitle').textContent = 'What language should BridgeUX use?';
+      $('#setupFinish').hidden = false; $('#setupOffline').hidden = true; $('#setupLanguage').focus(); return;
+    }
+    $('#setupStepLabel').textContent = 'STEP 1 OF 3';
     $('#setupGateTitle').textContent = 'What support would help you?';
     $('#setupGateHint').hidden = false;
     $('#setupGateSupports').hidden = false;
@@ -70,17 +76,37 @@
       return;
     }
     prefs.supports = gateSupports.filter(input => input.checked).map(input => input.value);
+    setupLanguage = language;
     prefs.interfaceLanguage = language;
+    $('#setupLanguageStep').hidden = true; $('#setupAiStep').hidden = false;
+    $('#setupStepLabel').textContent = 'STEP 3 OF 3 · ON-DEVICE AI';
+    $('#setupGateTitle').textContent = 'Set up your private AI';
+    $('#setupFinish').hidden = true; $('#setupOffline').hidden = false;
+    $('#setupAiRetry').focus();
+  };
+  function finishSetup() {
     prefs.setupComplete = true;
-    localStorage.setItem('bridgeux-last-voice-language', language === 'हिन्दी' ? 'hi' : 'en');
+    localStorage.setItem('bridgeux-last-voice-language', setupLanguage === 'हिन्दी' ? 'hi' : 'en');
     document.querySelectorAll('#setupForm [name=support]').forEach(input => { input.checked = prefs.supports.includes(input.value); });
-    $('#interfaceLanguage').value = language;
+    $('#interfaceLanguage').value = setupLanguage;
     save();
     apply();
     gate.close();
-    announce(`Setup saved. BridgeUX will listen and reply in ${language === 'हिन्दी' ? 'Hindi' : 'English'}.`);
+    announce(`Setup saved. BridgeUX will listen and reply in ${setupLanguage === 'हिन्दी' ? 'Hindi' : 'English'}.`);
     window.dispatchEvent(new Event('bridgeux:setup-complete'));
+  }
+  $('#setupOffline').onclick = finishSetup;
+  $('#setupAiRetry').onclick = async () => {
+    const button = $('#setupAiRetry'); button.disabled = true; button.textContent = 'Setting up…'; $('#setupOffline').disabled = true;
+    $('#setupAiStatus').textContent = 'Checking your local AI setup…';
+    try { await window.bridgeux.installLocalAI(); finishSetup(); }
+    catch (error) { $('#setupAiStatus').textContent = error.message || 'Setup could not finish. Check your internet connection and try again.'; button.disabled = false; button.textContent = 'Try again'; $('#setupOffline').disabled = false; }
   };
+  window.bridgeux?.onSetupProgress(progress => {
+    $('#setupAiStatus').textContent = progress.message;
+    if (Number.isFinite(progress.percent)) { $('#setupProgressBar').style.width = `${progress.percent}%`; $('#setupProgressBar').parentElement.setAttribute('aria-valuenow', progress.percent); }
+    if (progress.stage === 'error') { $('#setupAiRetry').disabled = false; $('#setupAiRetry').textContent = 'Try again'; $('#setupOffline').disabled = false; }
+  });
 
   $('#setupForm').addEventListener('submit', event => {
     event.preventDefault();

@@ -1009,6 +1009,21 @@ select {
   justify-content:flex-end
 }
 
+.setup-ai { position:relative; overflow:hidden; min-height:310px; padding:14px 8px 4px; animation:setup-rise .5s cubic-bezier(.2,.8,.2,1) both }
+.setup-ai h3 { margin:4px 0; font-size:22px }
+.setup-ai>p:not(.eyebrow) { max-width:560px; color:var(--muted); line-height:1.6 }
+.setup-orbit { position:relative; display:grid; place-items:center; width:76px; height:76px; margin:10px 0 18px; border-radius:24px; background:linear-gradient(145deg,#1e473b,#101d1b); box-shadow:inset 0 1px #ffffff26,0 14px 30px #02080680; transform:rotate(-7deg) }
+.setup-orbit:before,.setup-orbit:after { content:""; position:absolute; inset:9px; border:1px solid #9af0d166; border-radius:18px; animation:setup-pulse 2.6s ease-in-out infinite }
+.setup-orbit:after { inset:-5px; border-color:#9af0d122; animation-delay:.4s }
+.setup-orbit span { width:23px; height:23px; border-radius:8px; background:linear-gradient(145deg,#b6ffdf,#42c898); box-shadow:0 0 26px #53d9a577 }
+.setup-orbit i { position:absolute; width:7px; height:7px; right:12px; top:12px; border-radius:50%; background:#d5ffed; box-shadow:0 0 12px #caffea }
+.setup-progress { height:8px; margin:20px 0 8px; overflow:hidden; border-radius:20px; background:#ffffff12; box-shadow:inset 0 1px 3px #0006 }
+.setup-progress span { display:block; width:0; height:100%; border-radius:inherit; background:linear-gradient(90deg,#55cf9e,#a5f2cf); box-shadow:0 0 18px #56d6a766; transition:width .4s ease }
+.setup-ai-status { min-height:42px; font-size:13px }
+@keyframes setup-rise { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:none } }
+@keyframes setup-pulse { 50% { transform:scale(1.06); opacity:.55 } }
+@media(prefers-reduced-motion:reduce) { .setup-ai,.setup-orbit:before,.setup-orbit:after { animation:none } .setup-progress span { transition:none } }
+
 body.spacious {
   line-height:1.85
 }
