@@ -31,7 +31,7 @@ test('system caption capture keeps its display tracks live until captions stop',
   const bridgeux = {
     setAgentStatus: async () => {}, getVoiceLanguage: async () => 'en',
     startSpeech: async () => ({ model: 'test model' }), stopSpeech: async () => {},
-    sendSpeechAudio() {}, updateCaptionOverlay: async () => {}, onSpeechResult() {}
+    sendSpeechAudio() {}, updateCaptionOverlay: async () => {}, onSpeechResult() {}, onSpeechError() {}
   };
   const window = {
     bridgeux,
@@ -44,6 +44,8 @@ test('system caption capture keeps its display tracks live until captions stop',
     navigator: { mediaDevices: { getDisplayMedia: options => { constraints = options; return Promise.resolve(stream); } } },
     AudioContext,
     AudioWorkletNode,
+    setTimeout,
+    clearTimeout,
     CustomEvent: class {}
   });
 

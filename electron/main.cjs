@@ -80,7 +80,10 @@ function startSpeech(request = {}) {
       speechWorkerLanguage = language;
       speechWorker.on('message', message => {
         if (message.type === 'ready') resolve();
-        if (message.type === 'error') reject(new Error(message.message));
+        if (message.type === 'error') {
+          reject(new Error(message.message));
+          for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed()) win.webContents.send('bridgeux:speech-error', { channel: message.channel, message: message.message });
+        }
         if (message.type === 'transcript' && message.channel === 'captions') {
           latestCaptionText = String(message.text || '').slice(-280);
           if (!captionOverlayWindow || captionOverlayWindow.isDestroyed()) createCaptionOverlayWindow();
@@ -495,16 +498,26 @@ function hideAgentStatusForCapture() {
 async function analyzeUiScreen(payload) {
   if (!payload || typeof payload.task !== 'string' || payload.task.length > 1200 || !['English', 'हिन्दी', 'Español', 'Français'].includes(payload.language) ||
       payload.snapshotId !== lastUiSnapshot?.snapshotId) throw new Error('Screen details expired. Read the screen again.');
-  await ensureOllama();
-  const content = JSON.stringify({ window: lastUiSnapshot.windowTitle, url: lastUiSnapshot.url, controls: lastUiSnapshot.elements.map(({ name, role, value, password, focused }) => ({ name, role, value: password ? '[hidden]' : value, focused })) }).slice(0, 30000);
-  const response = await fetch('http://127.0.0.1:11434/api/generate', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: ASSISTANT_MODEL, prompt: `You are a screen reader and plain-language guide. Explain this currently visible Windows app/page in ${payload.language} using short, simple sentences. State what the app is, what the main text or form asks for, and what the user can do next. Read visible text accurately; do not invent missing details or claim an action happened. If the UI data is incomplete, say that. User question: ${payload.task}\nAccessible screen information: ${content}`, stream: false, think: false, keep_alive: '30m', options: { temperature: 0.1, num_ctx: 8192, num_predict: 240 } }),
-    signal: AbortSignal.timeout(30000)
-  });
-  if (!response.ok) throw new Error(`Local screen explanation returned ${response.status}.`);
-  const result = await response.json();
-  return { summary: String(result.response || '').trim() || 'I could not read enough text from the active window to explain it.', source: `Windows accessibility data · ${ASSISTANT_MODEL}` };
+  const visibleText = String(lastUiSnapshot.pageText || '').trim();
+  const controls = lastUiSnapshot.elements.map(({ name, role, value, password, focused }) => ({ name, role, value: password ? '[hidden]' : value, focused }));
+  const content = JSON.stringify({ window: lastUiSnapshot.windowTitle, url: lastUiSnapshot.url, pageText: visibleText, controls }).slice(0, 30000);
+  const screenFallback = [lastUiSnapshot.windowTitle && `Current window: ${lastUiSnapshot.windowTitle}`, lastUiSnapshot.url && `Page: ${lastUiSnapshot.url}`, visibleText && `Visible page text: ${visibleText.slice(0, 1200)}`, controls.length && `Visible controls: ${controls.slice(0, 12).map(item => item.name).filter(Boolean).join(', ')}`].filter(Boolean).join('\n');
+  try {
+    await ensureOllama();
+    const response = await fetch('http://127.0.0.1:11434/api/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: ASSISTANT_MODEL, prompt: `BridgeUX has just read the current screen and gives you its accessible text and controls below. Answer the user's question from that data in ${payload.language}, using short, simple sentences. Do not claim you cannot see or access the screen: the supplied data is the screen content. State what the app/page is, what its main text or form asks, and what the user can do next. Do not invent details or claim actions happened. If the supplied screen data has no readable content, say that plainly. User question: ${payload.task}\nCurrent screen data: ${content}`, stream: false, think: false, keep_alive: '30m', options: { temperature: 0.1, num_ctx: 8192, num_predict: 240 } }),
+      signal: AbortSignal.timeout(30000)
+    });
+    if (!response.ok) throw new Error(`Local screen explanation returned ${response.status}.`);
+    const result = await response.json();
+    let summary = String(result.response || '').trim();
+    if (/\b(?:i (?:cannot|can't|am unable to) (?:see|view|access)|don't have access to) (?:(?:your|the|this) )?(?:computer )?screen\b/i.test(summary) && screenFallback) summary = screenFallback;
+    return { summary: summary || screenFallback || 'I could not read enough text from the active window. Select a display for visual screen reading.', source: `Windows accessibility data · ${ASSISTANT_MODEL}` };
+  } catch (error) {
+    if (screenFallback) return { summary: screenFallback, source: 'Windows accessibility data · local text fallback' };
+    throw error;
+  }
 }
 
 async function performUiAction(payload) {

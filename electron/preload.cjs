@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('bridgeux', Object.freeze({
   pauseSpeech: () => ipcRenderer.invoke('bridgeux:speech-pause'),
   sendSpeechAudio: (samples, channel = 'voice') => ipcRenderer.send('bridgeux:speech-audio', { samples, channel }),
   onSpeechResult: callback => ipcRenderer.on('bridgeux:speech-result', (_event, result) => callback(result)),
+  onSpeechError: callback => ipcRenderer.on('bridgeux:speech-error', (_event, error) => callback(error)),
   speakText: request => ipcRenderer.invoke('bridgeux:speak-text', request),
   onTtsAudio: callback => ipcRenderer.on('bridgeux:tts-audio', (_event, audio) => callback(audio)),
   updateCaptionOverlay: (visible, text = '') => ipcRenderer.invoke('bridgeux:caption-overlay', { visible, text }),

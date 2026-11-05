@@ -6,6 +6,9 @@
   let sink = null;
   let running = false;
   let starting = false;
+  let audioFrames = 0;
+  let gotTranscript = false;
+  let audioCheck = null;
 
   const setStatus = text => {
     const element = document.querySelector('#liveCaptionStatus');
@@ -32,13 +35,23 @@
     capture = new AudioWorkletNode(context, 'bridgeux-capture');
     sink = context.createGain();
     sink.gain.value = 0;
-    capture.port.onmessage = event => window.bridgeux.sendSpeechAudio(event.data, 'captions');
+    audioFrames = 0;
+    gotTranscript = false;
+    capture.port.onmessage = event => {
+      audioFrames++;
+      if (audioFrames === 1) setStatus(`System audio connected · Listening in ${language === 'hi' ? 'Hindi' : 'English'}…`);
+      window.bridgeux.sendSpeechAudio(event.data, 'captions');
+    };
     source.connect(capture);
     capture.connect(sink);
     sink.connect(context.destination);
     running = true;
     setStatus(`Live captions on · ${language === 'hi' ? 'Hindi' : 'English'} · ${ready.model}`);
     await window.bridgeux.updateCaptionOverlay(true, 'Listening to computer audio…');
+    audioCheck = setTimeout(() => {
+      if (running && !audioFrames) setStatus('Captions are on, but no computer audio is reaching BridgeUX. Make sure sound is playing, then stop and start captions again.');
+      else if (running && !gotTranscript) setStatus('Computer audio is reaching the speech model, but no words were recognized yet. Check that speech is playing and your selected language matches it.');
+    }, 8000);
     stream.getAudioTracks().forEach(track => {
       track.addEventListener('ended', stop, { once: true });
       track.addEventListener('mute', () => { if (running) setStatus('System audio paused or unavailable. Resume playback to continue captions.'); });
@@ -51,6 +64,8 @@
   async function stop() {
     if (!running && !stream && !context) return;
     running = false;
+    clearTimeout(audioCheck);
+    audioCheck = null;
     for (const node of [source, capture, sink]) { try { node?.disconnect(); } catch {} }
     source = capture = sink = null;
     stream?.getTracks().forEach(track => track.stop());
@@ -71,11 +86,17 @@
   window.bridgeuxStopSystemCaptions = stop;
   window.bridgeux?.onSpeechResult(result => {
     if (result.channel !== 'captions' || !result.text) return;
+    gotTranscript = true;
     const text = String(result.text).slice(-280);
     const line = document.querySelector('#captionText');
     if (line) line.textContent = text;
     window.bridgeux.updateCaptionOverlay(true, text).catch(() => {});
     if (running) setStatus(`Live captions · ${text}`);
+  });
+  window.bridgeux?.onSpeechError(error => {
+    if (error.channel !== 'captions') return;
+    const message = `Caption recognition failed: ${error.message}`;
+    window.bridgeuxStopSystemCaptions?.().then(() => setStatus(message));
   });
   window.addEventListener('pagehide', () => { stop(); });
   window.addEventListener('bridgeux:preferences-changed', () => {
