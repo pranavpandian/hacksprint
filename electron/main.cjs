@@ -9,7 +9,7 @@ const { Worker } = require('node:worker_threads');
 const { isSafeActionTask, validateSuggestedAction, isSafeAgentGoal, validateAgentAction, validateUiAgentAction, validateSpokenFormValue } = require('./screen-actions.cjs');
 const windowsUIA = require('./windows-uia.cjs');
 const gesturePointer = require('./gesture-pointer.cjs');
-const { normalizeWebsiteUrl } = require('./browser-navigation.cjs');
+const { normalizeWebsiteUrl, resolveKnownWebsite } = require('./browser-navigation.cjs');
 const { firstVisibleYoutubeVideo, youtubeMediaControl, browserMediaIntent, routeAgentTask } = require('./browser-intents.cjs');
 const { createBrowserBridge } = require('./browser-bridge.cjs');
 const { selectLocalModels } = require('./local-models.cjs');
@@ -48,6 +48,7 @@ let browserBridgeToken = '';
 let browserBridge = null;
 let agentStatusWindow = null;
 let captionOverlayWindow = null;
+let captionHideTimer = null;
 let latestCaptionText = 'Listening to computer audio…';
 let agentStatusMessage = 'BridgeUX is working';
 const agentStatusState = { active: false, listening: false, captionsActive: false, message: 'BridgeUX is ready' };
@@ -459,7 +460,7 @@ async function getUiSnapshot() {
 function createAgentStatusWindow() {
   const area = screen.getPrimaryDisplay().workArea;
   agentStatusWindow = new BrowserWindow({
-    width: 368, height: 410, x: area.x + 18, y: area.y + 18,
+    width: 350, height: 330, x: area.x + 16, y: area.y + 16,
     frame: false, resizable: false, movable: true, show: false,
     alwaysOnTop: true, skipTaskbar: true, transparent: true, hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true }
@@ -474,9 +475,10 @@ function createAgentStatusWindow() {
 function createCaptionOverlayWindow() {
   if (captionOverlayWindow && !captionOverlayWindow.isDestroyed()) return captionOverlayWindow;
   const area = screen.getPrimaryDisplay().workArea;
+  const width = Math.min(760, area.width - 40);
   captionOverlayWindow = new BrowserWindow({
-    width: Math.min(980, area.width - 48), height: 116,
-    x: area.x + Math.round((area.width - Math.min(980, area.width - 48)) / 2), y: area.y + area.height - 140,
+    width, height: 76,
+    x: area.x + Math.round((area.width - width) / 2), y: area.y + area.height - 88,
     frame: false, resizable: false, movable: false, show: false, transparent: true,
     alwaysOnTop: true, skipTaskbar: true, hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true }
@@ -723,7 +725,13 @@ ipcMain.handle('bridgeux:caption-overlay', (_event, payload) => {
     latestCaptionText = String(payload.text || 'Listening to computer audio…').slice(0, 280);
     if (!captionOverlayWindow.webContents.isLoadingMainFrame()) captionOverlayWindow.webContents.send('bridgeux:caption-text', { text: latestCaptionText, final: false });
     captionOverlayWindow.showInactive();
-  } else if (captionOverlayWindow && !captionOverlayWindow.isDestroyed()) captionOverlayWindow.hide();
+    clearTimeout(captionHideTimer);
+    captionHideTimer = setTimeout(() => captionOverlayWindow && !captionOverlayWindow.isDestroyed() && captionOverlayWindow.hide(), 3500);
+  } else {
+    clearTimeout(captionHideTimer);
+    captionHideTimer = null;
+    if (captionOverlayWindow && !captionOverlayWindow.isDestroyed()) captionOverlayWindow.hide();
+  }
   return { visible: payload?.visible === true };
 });
 ipcMain.on('bridgeux:voice-language', (_event, language) => { if (language === 'en' || language === 'hi') preferredVoiceLanguage = language; });
@@ -738,6 +746,7 @@ ipcMain.handle('bridgeux:analyze-ui', (_event, payload) => analyzeUiScreen(paylo
 ipcMain.handle('bridgeux:ui-action', (_event, payload) => performUiAction(payload));
 ipcMain.handle('bridgeux:web-search', (_event, payload) => searchWeb(payload));
 ipcMain.handle('bridgeux:open-website', (_event, url) => openWebsite(url));
+ipcMain.handle('bridgeux:known-website', (_event, target) => resolveKnownWebsite(target));
 ipcMain.handle('bridgeux:gesture-assets', () => gestureAssets());
 ipcMain.handle('bridgeux:sign-assets', () => {
   const modelDir = app.isPackaged ? path.join(process.resourcesPath, 'models', 'sign') : path.join(__dirname, '..', 'models', 'sign');

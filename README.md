@@ -11,11 +11,11 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 - Local Ollama model selection uses installed compatible models: it prefers Qwen3.5 4B or Qwen3-VL for both assistant and vision, then can use Qwen2.5 for text and Moondream for vision. It no longer assumes one exact model tag is installed.
 - A local OpenClaw-style agent loop. Pair the included Chrome/Brave extension once to read and act on the active tab DOM; Windows UI Automation controls other desktop apps. Screenshots are only the fallback for visual-only apps.
 - Explicit spoken PC tasks start a one-shot agent automatically, with no display selection when Windows exposes accessible controls. For longer tasks, enable hands-free mode once; each step reads the current browser/app accessibility tree. It asks only for missing form values and can submit a Google Form after an explicit request. Say “stop agent” or press **Stop agent** to interrupt.
-- Voice commands such as “open example.com”, “visit Wikipedia”, or “go to the NASA website” open that site in the default browser. It resolves named sites with web search and supports HTTP/HTTPS links.
+- Voice commands such as “open YouTube page”, “open example.com”, or “go to the NASA website” open that site in the default browser. Common sites open directly; other named sites are found with web search.
 - Spoken web searches for flights, weather, news, and other current information. BridgeUX sends the spoken search query to DuckDuckGo, then summarizes result snippets locally and displays source links. Check provider pages for live prices and availability.
 - A user-started camera view with a compact ASL fingerspelling landmark model for static A–Z and 0–9 handshapes. It can match the spelled sequences `HELLO`, `HOW ARE YOU`, and `THANK YOU` and speak the matching phrase. Those shortcuts match spelled letters; they are not trained ASL phrase translation. J/Z motion and ASL grammar/sentence translation are not supported. Optional MediaPipe hand controls move the pointer, pinch to click, and use a V-sign swipe to scroll; GPU delegate is used when available.
 - Adjustable text size, contrast/theme, spacing, live system captions, and an optional Chrome helper.
-- Windows live captions for computer playback audio, shown in a bottom-of-screen caption bar and the floating controls. Click **Live captions** to start and **Stop** to end; audio is processed on-device. The tiny display video track required by the desktop-audio API stays active at 1 fps during captions; no video frames are stored or passed to the speech model. Captions recognize the selected English or Hindi speech language; they do not translate audio between languages.
+- Windows live captions for computer playback audio, shown briefly in a compact bottom-of-screen bar and the floating controls. The bar fades away after speech pauses so it does not cover the screen. Click **Live captions** to start and **Stop** to end; audio is processed on-device. The tiny display video track required by the desktop-audio API stays active at 1 fps during captions; no video frames are stored or passed to the speech model. Captions recognize the selected English or Hindi speech language; they do not translate audio between languages.
 
 See [Privacy](PRIVACY.md), [Security](SECURITY.md), [architecture](docs/ARCHITECTURE.md), and [model details](models/README.md) for limits and implementation notes.
 
@@ -26,7 +26,7 @@ See [Privacy](PRIVACY.md), [Security](SECURITY.md), [architecture](docs/ARCHITEC
 1. Finish the required setup by choosing support preferences and English or Hindi.
 2. Choose **Enable microphone** in the welcome prompt, or **Start listening** in the Speak to BridgeUX section.
 3. If Windows blocks the microphone, choose **Open Windows microphone settings** and turn on microphone access for desktop apps. Return to BridgeUX and start listening again.
-4. Speak a request such as “open YouTube”, “read my screen”, or “fill this form”. BridgeUX shows the recognized words, routes screen and browser tasks to the agent, then reads the result aloud. Use **Stop listening** or say “stop listening” to stop microphone capture.
+4. Speak a request such as “open YouTube page”, “read my screen”, or “fill this form”. BridgeUX shows the recognized words, routes screen and browser tasks to the agent, then reads the result aloud. Use **Stop listening** or say “stop listening” to stop microphone capture.
 
 ### Turn on live captions
 

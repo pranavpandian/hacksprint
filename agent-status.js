@@ -14,7 +14,7 @@ function renderStatus(value = {}) {
   pill.classList.toggle('active', busy);
   $('#stateLabel').textContent = state.captionsActive ? 'Captions on' : state.listening ? 'Listening' : state.active ? 'Working' : 'Ready';
   $('#message').textContent = state.message || (state.listening ? 'Listening for your request…' : state.active ? 'Working on your request…' : 'BridgeUX is ready');
-  $('#statusIcon').textContent = state.listening ? '🎙' : state.captionsActive ? 'CC' : state.active ? '✦' : '◉';
+  $('#statusIcon').textContent = state.listening ? '◖' : state.captionsActive ? 'CC' : state.active ? '✦' : '◉';
   $('#statusIcon').classList.toggle('listening', state.listening);
   $('#listenLabel').textContent = state.listening ? 'Stop listening' : 'Start listening';
   $('#listen').classList.toggle('primary', !state.listening);

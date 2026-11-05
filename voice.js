@@ -11,6 +11,8 @@
   let stream = null;
   let inputContext = null;
   let worklet = null;
+  let inputFrames = 0;
+  let listeningWatchdog = null;
   let mutedOutput = null;
   let source = null;
   let finalText = '';
@@ -128,6 +130,8 @@
   window.bridgeuxSpeak = (text, language = getVoiceLanguage()) => playReply(text, language);
 
   async function stopListening(message = 'Microphone stopped.') {
+    clearTimeout(listeningWatchdog);
+    listeningWatchdog = null;
     try {
       if (worklet) {
         worklet.disconnect();
@@ -172,7 +176,12 @@
       await inputContext.audioWorklet.addModule('speech-capture.js');
       source = inputContext.createMediaStreamSource(stream);
       worklet = new AudioWorkletNode(inputContext, 'bridgeux-capture');
-      worklet.port.onmessage = event => window.bridgeux.sendSpeechAudio(event.data);
+      inputFrames = 0;
+      worklet.port.onmessage = event => {
+        inputFrames++;
+        if (inputFrames === 1) speechStatus.textContent = 'Microphone audio connected. Speak a short request.';
+        window.bridgeux.sendSpeechAudio(event.data);
+      };
       source.connect(worklet);
       // A worklet that is not connected to the render graph may never be pulled.
       // Route its silent output through a zero-gain node to keep capture running.
@@ -181,6 +190,10 @@
       worklet.connect(mutedOutput);
       mutedOutput.connect(inputContext.destination);
       speechStatus.textContent = `${ready.model}. Microphone connected; listening in ${language === 'hi' ? 'Hindi' : 'English'}.`;
+      listeningWatchdog = setTimeout(() => {
+        if (inputFrames === 0) speechStatus.textContent = 'The microphone opened, but no audio is reaching the recognizer. Check the selected Windows microphone.';
+        else if (!partialText) speechStatus.textContent = 'Microphone audio is reaching the recognizer, but it has not recognized words yet. Check the selected language and speak close to the microphone.';
+      }, 8000);
       window.bridgeux.setAgentStatus({ listening: true, message: `Listening in ${language === 'hi' ? 'Hindi' : 'English'}…` });
       finalText = '';
       partialText = '';
@@ -231,16 +244,15 @@
     const websiteRequest = text.match(/\b(?:open|visit|go to|navigate to)\s+(?:(?:the\s+)?(?:website|site)\s+)?(https?:\/\/[^\s]+|(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/[a-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*)?)/i);
     const siteIntent = text.match(/\b(?:open|visit|go to|navigate to)\s+(?:(?:the\s+)?(?:website|site)\s+)?(.+?)(?:\s+(?:website|site))?[.!?]*$/i);
     const browserOnly = /^\s*(?:please\s+)?(?:open|launch|start) (?:my )?(?:default )?(?:web )?browser\s*[.!?]*$|^\s*(?:please\s+)?open brave\s*[.!?]*$/i.test(text);
-    const siteAliases = { google: 'https://www.google.com', youtube: 'https://www.youtube.com', wikipedia: 'https://www.wikipedia.org', amazon: 'https://www.amazon.com', facebook: 'https://www.facebook.com', instagram: 'https://www.instagram.com', reddit: 'https://www.reddit.com', github: 'https://github.com', 'stack overflow': 'https://stackoverflow.com', bbc: 'https://www.bbc.com', brave: 'https://search.brave.com' };
-    const requestedTarget = (siteIntent?.[1] || '').replace(/\s+(?:website|site)$/i, '').trim();
-    const siteAlias = Object.entries(siteAliases).find(([name]) => new RegExp(`^${name.replace(' ', '\\s+')}$`, 'i').test(requestedTarget));
-    const namedWebsite = Boolean(siteIntent && (/\b(?:website|site)\b/i.test(siteIntent[0]) || (requestedTarget.length <= 50 && !/\b(?:and|then|to|for|with|click|search|find|read|tell)\b/i.test(requestedTarget))));
+    const requestedTarget = siteIntent?.[1] || '';
+    const siteAliasUrl = siteIntent ? await window.bridgeux.resolveKnownWebsite(requestedTarget) : null;
+    const namedWebsite = Boolean(siteIntent && (siteAliasUrl || /\b(?:website|site|homepage)\b/i.test(siteIntent[0]) && !/\b(?:first|video|screen|tab|link)\b/i.test(requestedTarget)));
     const afterWebsiteUrl = websiteRequest ? text.slice(websiteRequest.index + websiteRequest[0].length) : '';
     const websiteWithFollowup = Boolean((websiteRequest || siteIntent) && /\b(?:and then|then|and|to|so that)\b/i.test(afterWebsiteUrl || requestedTarget));
-    if ((websiteRequest && !websiteWithFollowup) || siteAlias || (namedWebsite && !websiteWithFollowup) || browserOnly) {
+    if ((websiteRequest && !websiteWithFollowup) || siteAliasUrl || (namedWebsite && !websiteWithFollowup) || browserOnly) {
       try {
-        let url = websiteRequest?.[1] || siteAlias?.[1] || (browserOnly ? 'https://www.google.com' : '');
-        if (!url && requestedTarget) {
+        let url = websiteRequest?.[1] || siteAliasUrl || (browserOnly ? 'https://www.google.com' : '');
+        if (!url && namedWebsite && requestedTarget) {
           const found = await window.bridgeux.searchWeb({ query: `${requestedTarget} official website`, language: getVoiceLanguage() === 'hi' ? 'हिन्दी' : 'English' });
           url = found.sources[0]?.url;
         }
@@ -371,6 +383,8 @@
     if (result.type !== 'transcript') return;
     const text = String(result.text || '').trim();
     if (!text) return;
+    clearTimeout(listeningWatchdog);
+    listeningWatchdog = null;
     if (result.final) {
       finalText = [finalText, text].filter(Boolean).join(' ');
       partialText = '';
@@ -389,6 +403,11 @@
       partialText = text;
     }
     transcript.textContent = [finalText, partialText].filter(Boolean).join(' ') || 'Listening…';
+  });
+  window.bridgeux.onSpeechError?.(error => {
+    if (error.channel !== 'voice') return;
+    const message = `Speech recognition failed: ${error.message}`;
+    stopListening(message).then(() => { speechStatus.textContent = message; $('#liveRegion').textContent = message; });
   });
 
   window.bridgeux.onOverlayCommand(async command => {

@@ -47,7 +47,6 @@
     sink.connect(context.destination);
     running = true;
     setStatus(`Live captions on · ${language === 'hi' ? 'Hindi' : 'English'} · ${ready.model}`);
-    await window.bridgeux.updateCaptionOverlay(true, 'Listening to computer audio…');
     audioCheck = setTimeout(() => {
       if (running && !audioFrames) setStatus('Captions are on, but no computer audio is reaching BridgeUX. Make sure sound is playing, then stop and start captions again.');
       else if (running && !gotTranscript) setStatus('Computer audio is reaching the speech model, but no words were recognized yet. Check that speech is playing and your selected language matches it.');

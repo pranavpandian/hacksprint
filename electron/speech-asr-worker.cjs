@@ -1,8 +1,10 @@
 'use strict';
 const path = require('node:path');
+const os = require('node:os');
 const { parentPort, workerData } = require('node:worker_threads');
 const sherpa = require('sherpa-onnx-node');
 const dir = workerData.modelDir;
+const numThreads = Math.max(2, Math.min(8, os.availableParallelism() - 1));
 const channel = message => message.channel === 'captions' ? 'captions' : 'voice';
 const recognizer = new sherpa.OnlineRecognizer({
   featConfig: { sampleRate: 16000, featureDim: 80 },
@@ -12,9 +14,9 @@ const recognizer = new sherpa.OnlineRecognizer({
       decoder: path.join(dir, 'decoder.int8.onnx'),
       joiner: path.join(dir, 'joiner.int8.onnx')
     },
-    tokens: path.join(dir, 'tokens.txt'), numThreads: 4, provider: 'cpu'
+    tokens: path.join(dir, 'tokens.txt'), numThreads, provider: 'cpu'
   },
-  decodingMethod: 'greedy_search', enableEndpoint: true, numThreads: 4
+  decodingMethod: 'greedy_search', enableEndpoint: true, numThreads
 });
 const streams = { voice: null, captions: null };
 const lastText = { voice: '', captions: '' };
