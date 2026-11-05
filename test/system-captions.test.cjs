@@ -3,6 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 
+test('an optional missing read-tip button cannot prevent caption controls from registering', () => {
+  const app = fs.readFileSync('app.js', 'utf8');
+  assert.match(app, /if\s*\(\s*\$\('#readTip'\)\s*\)\s*\$\('#readTip'\)\.onclick/);
+  assert.ok(app.indexOf("$('#startCaption').onclick") > app.indexOf("$('#readTip').onclick"));
+});
+
 test('system caption capture keeps its display tracks live until captions stop', async () => {
   const source = fs.readFileSync('system-captions.js', 'utf8');
   const stopped = { audio: 0, video: 0 };

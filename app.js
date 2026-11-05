@@ -138,7 +138,7 @@
     speechSynthesis.speak(utterance);
   }
   $('#readPage').onclick = () => speak(prefs.interfaceLanguage === 'हिन्दी' ? 'ब्रिज यूएक्स में आपका स्वागत है। यहां आप स्क्रीन समझने, पढ़ने और स्थानीय सहायता पाने के विकल्प चुन सकते हैं।' : 'BridgeUX. Technology that meets you where you are. Choose supports that work for you, then use the local helper or screen tools below.');
-  $('#readTip').onclick = () => speak(prefs.interfaceLanguage === 'हिन्दी' ? 'ब्रिज यूएक्स निर्देश पढ़ सकता है, आपकी चुनी हुई भाषा सुन सकता है और स्क्रीन समझने में मदद कर सकता है।' : 'BridgeUX can read instructions aloud, listen in your selected language, and help explain selected screen content.');
+  if ($('#readTip')) $('#readTip').onclick = () => speak(prefs.interfaceLanguage === 'हिन्दी' ? 'ब्रिज यूएक्स निर्देश पढ़ सकता है, आपकी चुनी हुई भाषा सुन सकता है और स्क्रीन समझने में मदद कर सकता है।' : 'BridgeUX can read instructions aloud, listen in your selected language, and help explain selected screen content.');
   $('#onboardingSpeak').onclick = () => speak(prefs.interfaceLanguage === 'हिन्दी' ? 'जो सहायता आपके लिए उपयोगी हो, उसे चुनें। आपकी सहायता और भाषा की पसंद से ब्रिज यूएक्स अपनी मदद तय करता है।' : 'Choose any supports that feel useful. Your support and language choices help BridgeUX listen and reply in the language you selected.');
   $('#plainToggle').onclick = () => { $('#plainResult').hidden = !$('#plainResult').hidden; $('#plainToggle').textContent = $('#plainResult').hidden ? 'Simplify instructions' : 'Hide simpler instructions'; };
 
