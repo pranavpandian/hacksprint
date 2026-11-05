@@ -8,7 +8,11 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to main content</a>
-<header class="top"><a class="brand" href="#home" aria-label="BridgeUX home"><img src="bridgeux-mark.svg" alt="" width="40" height="40"> <span>BridgeUX</span></a><nav aria-label="Main navigation"><a href="#screenHelper">Get help</a><a href="#onboarding">Your support</a><a href="#settings">Display settings</a></nav><button id="readPage" class="quiet">Read page aloud</button></header>
+<header class="top">
+  <a class="brand" href="#home" aria-label="BridgeUX home"><img src="bridgeux-mark.svg" alt="" width="40" height="40"><span>BridgeUX</span></a>
+  <div class="top-status"><span class="status-light" aria-hidden="true"></span> Your private accessibility space</div>
+  <button id="readPage" class="quiet">Read page aloud</button>
+</header>
 <dialog id="setupGate" aria-labelledby="setupGateTitle"><p id="setupStepLabel" class="eyebrow">STEP 1 OF 2</p><h2 id="setupGateTitle">What support would help you?</h2><p id="setupGateHint">Choose at least one. You do not need to share a diagnosis.</p><fieldset id="setupGateSupports" class="choices" aria-describedby="setupGateError"><legend class="sr-only">Choose one or more accessibility supports</legend>
 <label class="choice"><input type="checkbox" name="setupSupport" value="blind"><span class="icon">◉</span><span><b>Read-aloud support</b><small>Hear instructions and key guidance</small></span></label>
 <label class="choice"><input type="checkbox" name="setupSupport" value="lowVision"><span class="icon">◐</span><span><b>Low vision</b><small>Larger text, contrast and spacing</small></span></label>
@@ -19,7 +23,25 @@
 <label class="choice"><input type="checkbox" name="setupSupport" value="plain"><span class="icon">Aa</span><span><b>Less technical guidance</b><small>Get clearer explanations and steps</small></span></label></fieldset>
 <p id="setupGateError" class="status" role="status" aria-live="polite"></p><div id="setupLanguageStep" hidden><p class="eyebrow">STEP 2 OF 2</p><label for="setupLanguage">Which language should BridgeUX listen and reply in?</label><select id="setupLanguage" required><option value="">Choose English or Hindi…</option><option value="English">English</option><option value="हिन्दी">हिन्दी (Hindi)</option></select><p class="note">Offline speech recognition and spoken replies currently support English and Hindi.</p></div><div class="actions"><button class="button primary" id="setupNext" type="button">Continue</button><button class="button secondary" id="setupBack" type="button" hidden>Back</button><button class="button primary" id="setupFinish" type="button" hidden>Save and continue</button></div></dialog>
 <dialog id="voiceWelcome" aria-labelledby="voiceTitle" aria-describedby="voiceDescription"><form method="dialog"><p class="eyebrow">VOICE SUPPORT</p><h2 id="voiceTitle">Would you like to use voice?</h2><p id="voiceDescription">BridgeUX listens and replies in your selected language. If you enable the microphone, Windows will ask for permission. Speech runs on this device.</p><div class="actions"><button class="button primary" id="enableVoice" type="button">Enable microphone</button><button class="button secondary" value="skip">Continue without voice</button></div><p id="voicePermissionStatus" role="status" aria-live="polite"></p><button class="button secondary" id="openMicrophoneSettings" type="button" hidden>Open Windows microphone settings</button></form></dialog>
-<main id="main">
+<div class="app-layout">
+  <aside class="side-rail">
+    <p class="rail-label">YOUR WORKSPACE</p>
+    <nav aria-label="Workspace navigation">
+      <a class="rail-link" href="#home"><span>⌂</span>Overview</a>
+      <a class="rail-link" href="#screenHelper"><span>◫</span>Screen help</a>
+      <a class="rail-link" href="#assistant"><span>✳</span>Ask BridgeUX</a>
+      <a class="rail-link" href="#voiceAssistant"><span>◖</span>Voice</a>
+      <a class="rail-link" href="#captions"><span>▤</span>Live captions</a>
+      <a class="rail-link" href="#sign"><span>✋</span>Sign support</a>
+      <a class="rail-link rail-settings" href="#settings"><span>⚙</span>Display settings</a>
+    </nav>
+    <div class="rail-bottom">
+      <span class="rail-orb" aria-hidden="true">B</span>
+      <span><b>Here when you need help</b><small>Private · on this device</small></span>
+    </div>
+  </aside>
+  <div class="app-content">
+    <main id="main">
 <section id="home" class="hero"><div class="hero-copy"><p class="eyebrow">A CALMER WAY TO USE TECHNOLOGY</p><h1>Get clear help with the screen in front of you.</h1><p class="lead">Ask a question, understand a page, or use your voice to get things done. BridgeUX keeps help close and explains each step in plain language.</p><div class="actions"><a class="button primary" href="#screenHelper">Help me with my screen</a><a class="button secondary" href="#assistant">Ask a question</a><button class="quiet" id="talkToMe" type="button">Hear how BridgeUX can help</button></div><p class="note">Your choices stay on this device. Choose only the support that feels useful.</p></div><aside class="hero-card"><img src="bridgeux-mark.svg" width="48" height="48" alt=""><h2>One place for everyday help</h2><ul><li>Understand a page</li><li>Ask in your own words</li><li>Use voice or browser controls</li></ul><a href="#voiceAssistant">See how voice help works <span aria-hidden="true">→</span></a></aside></section>
 <section id="onboarding" class="panel preference-panel"><details id="supportChoices"><summary><span><span class="eyebrow">YOUR SUPPORT</span><strong>Change support or language</strong></span><span class="pill">Optional</span></summary><div class="preference-content"><p>Choose the types of help you want. You can change these choices at any time.</p><button class="button secondary" id="skipSetup" type="button">Review my choices</button><button id="onboardingSpeak" class="button secondary" type="button">Hear this page aloud</button><form id="setupForm"><fieldset class="choices"><legend class="sr-only">Accessibility supports</legend>
 <label class="choice"><input type="checkbox" name="support" value="blind"><span class="icon">◉</span><span><b>Read-aloud support</b><small>Hear BridgeUX instructions and key guidance</small></span></label>
@@ -39,4 +61,17 @@
 
 <section id="settings" class="panel"><p class="eyebrow">YOUR EXPERIENCE</p><h2>Display settings</h2><p>These controls are available to everyone and do not require a selected support.</p><div class="settings-grid"><label>Text size <span id="sizeValue">100%</span><input id="textSize" type="range" min="100" max="150" step="10" value="100"></label><label>Interface theme<select id="theme"><option value="light">Light</option><option value="dark">Dark</option><option value="contrast">High contrast</option></select></label><label class="toggle"><input id="spacious" type="checkbox"> Increase spacing</label><label class="toggle"><input id="reduceMotion" type="checkbox"> Reduce motion</label></div><div class="actions"><button id="voiceSetup" class="button secondary" type="button">Voice options</button><button id="resetSettings" class="button secondary">Reset preferences</button><button id="auditButton" class="button secondary">Check this page</button></div><div id="auditResult" class="audit" role="status" aria-live="polite"></div><p class="note">Automated checks can find some issues; they do not prove WCAG compliance. Keyboard, screen reader, zoom and user testing are still needed.</p><p id="privacyStatus" class="status" role="status"></p></section>
 <section class="footer-card"><div><h2>Need an easier explanation?</h2><p>Try a plain-language version of this page’s instructions.</p></div><button id="plainToggle" class="button secondary">Simplify instructions</button><p id="plainResult" class="plain-result" hidden>Choose any supports that feel useful. Save your choices whenever you are ready. BridgeUX uses the preferences you choose to adjust its help.</p></section>
-</main><footer><span>BridgeUX · Accessibility is personal.</span><span>Local-first · No cloud AI APIs</span></footer><div id="liveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div><script src="app.js"></script><script src="local.js"></script><script type="module" src="sign-vision.js"></script><script src="asl-phrases.js"></script><script type="module" src="gesture-control.js"></script><script src="local-screen.js"></script><script src="system-captions.js"></script><script src="voice.js"></script></body></html>
+</main>
+    <footer><span>BridgeUX · Accessibility is personal.</span><a href="#onboarding">Your support &amp; settings</a></footer>
+  </div>
+</div>
+<div id="liveRegion" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<script src="app.js"></script>
+<script src="local.js"></script>
+<script type="module" src="sign-vision.js"></script>
+<script src="asl-phrases.js"></script>
+<script type="module" src="gesture-control.js"></script>
+<script src="local-screen.js"></script>
+<script src="system-captions.js"></script>
+<script src="voice.js"></script>
+</body></html>

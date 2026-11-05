@@ -4,6 +4,8 @@ BridgeUX is a Windows desktop accessibility prototype that combines voice intera
 
 > **Current scope:** BridgeUX is an accessibility prototype, not a replacement for a screen reader or interpreter. The agent reads the active app's Windows accessibility tree on each action, avoiding screenshots when the app exposes page content. It can submit a Google Form only when the user explicitly asks. The ASL feature classifies basic static fingerspelled letters and digits locally; it does not translate ASL words or sentences.
 
+The desktop home screen uses a left navigation rail to group screen help, the assistant, voice, captions, sign support, and display settings. The default dark theme uses layered surfaces and soft lighting for depth while keeping transitions lightweight; users can switch to light or high-contrast display settings.
+
 ## What it includes
 
 - Streaming English or Hindi speech-to-text through the local sherpa-onnx Nemotron 3.5 model. First launch requires the user to choose accessibility supports and a preferred language.

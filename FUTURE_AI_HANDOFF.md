@@ -24,7 +24,7 @@ BridgeUX is a Windows Electron accessibility prototype. It provides local Hindi/
 - `voice.js`, `speech-capture.js`: speech UI and microphone capture.
 - `electron/main.cjs`, `electron/preload.cjs`: local inference, capture, workers, and validated IPC.
 - `electron/speech-asr-worker.cjs`, `electron/speech-tts-worker.cjs`: local speech engines.
-- `server.py`, `browser-extension/`: optional local bridge and user-invoked Chrome helper.
+- `browser-extension/`: optional user-invoked Chrome helper; the Electron main process owns the local browser bridge.
 
 ## Product and safety constraints
 

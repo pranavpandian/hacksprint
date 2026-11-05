@@ -3,13 +3,13 @@
 
   const $ = selector => document.querySelector(selector);
   const announce = text => { $('#liveRegion').textContent = text; };
-  let prefs = { supports: [], interfaceLanguage: 'English', textSize: 100, theme: 'light', spacious: false, reduceMotion: false };
+  let prefs = { supports: [], interfaceLanguage: 'English', textSize: 100, theme: 'dark', spacious: false, reduceMotion: false };
   try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem('bridgeux-preferences') || '{}') }; } catch {}
 
   function save() { localStorage.setItem('bridgeux-preferences', JSON.stringify(prefs)); }
   function apply() {
-    document.body.classList.remove('dark', 'contrast', 'spacious');
-    if (prefs.theme !== 'light') document.body.classList.add(prefs.theme);
+    document.body.classList.remove('dark', 'light', 'contrast', 'spacious');
+    document.body.classList.add(prefs.theme);
     if (prefs.spacious) document.body.classList.add('spacious');
     document.documentElement.style.fontSize = `${prefs.textSize}%`;
     $('#textSize').value = prefs.textSize;
@@ -22,6 +22,14 @@
     document.querySelectorAll('#setupForm [name=support]').forEach(input => { input.checked = prefs.supports.includes(input.value); });
   }
   apply();
+
+  const railLinks = [...document.querySelectorAll('.rail-link')];
+  function updateNavigation() {
+    const current = location.hash || '#home';
+    railLinks.forEach(link => link.hash === current ? link.setAttribute('aria-current', 'page') : link.removeAttribute('aria-current'));
+  }
+  window.addEventListener('hashchange', updateNavigation);
+  updateNavigation();
 
   const gate = $('#setupGate');
   const gateSupports = [...document.querySelectorAll('[name=setupSupport]')];
@@ -126,7 +134,7 @@
   });
   $('#resetSettings').onclick = () => {
     localStorage.removeItem('bridgeux-preferences');
-    prefs = { supports: [], interfaceLanguage: 'English', textSize: 100, theme: 'light', spacious: false, reduceMotion: false };
+    prefs = { supports: [], interfaceLanguage: 'English', textSize: 100, theme: 'dark', spacious: false, reduceMotion: false };
     apply(); $('#setupStatus').textContent = 'Preferences reset on this device.';
     $('#privacyStatus').textContent = 'Local preferences cleared.'; announce('Preferences reset.');
     gateSupports.forEach(input => { input.checked = false; });
